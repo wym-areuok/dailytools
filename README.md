@@ -26,3 +26,24 @@
 16. 缓存监控：对系统的缓存信息查询，命令统计等。
 17. 在线构建器：拖动表单元素生成相应的HTML代码。
 18. 连接池监视：监视当前系统数据库连接池状态，可进行分析SQL找出系统性能瓶颈。
+
+## 备注
+sql脚本在不同服务器的sqlserver导入时要根据sqlserver的安装路径修改脚本中的路径和指定编码(导出sql时如指定则忽略)：
+```javascript
+FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER02\MSSQL\DATA
+
+COLLATE Chinese_Taiwan_Stroke_BIN
+
+/*示例代码*/
+USE [master]
+GO
+/****** Object:  Database [dailytools]    Script Date: 2025/11/18 23:53:04 ******/
+CREATE DATABASE [dailytools]
+ CONTAINMENT = NONE
+ ON  PRIMARY 
+( NAME = N'dailytools', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER02\MSSQL\DATA\dailytools.mdf' , SIZE = 8192KB , MAXSIZE = UNLIMITED, FILEGROWTH = 65536KB )
+ LOG ON 
+( NAME = N'dailytools_log', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER02\MSSQL\DATA\dailytools_log.ldf' , SIZE = 8192KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
+ COLLATE Chinese_Taiwan_Stroke_BIN
+ WITH CATALOG_COLLATION = DATABASE_DEFAULT, LEDGER = OFF
+```
