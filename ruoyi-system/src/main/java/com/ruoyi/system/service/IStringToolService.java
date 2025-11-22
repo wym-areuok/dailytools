@@ -1,5 +1,7 @@
 package com.ruoyi.system.service;
 
+import javax.servlet.http.HttpServletResponse;
+
 /**
  * @Author: weiyiming
  * @CreateTime: 2025-11-21
@@ -7,6 +9,7 @@ package com.ruoyi.system.service;
  */
 public interface IStringToolService {
 
-    String executeStringOperation(String input);
+    String execute(String input);
 
+    void downloadTemplate(HttpServletResponse response);
 }
