@@ -29,28 +29,39 @@ public class StringToolServiceImpl implements IStringToolService {
      * @date 2025-11-21
      */
     public String execute(String input) {
-        // 使用BufferedReader按行读取，避免一次性加载所有内容到内存
+        // 空值检查
+        if (input == null) {
+            return "()";
+        }
+        /*估算StringBuilder预分配空间 StringBuilder默认初始容量通常是16 SN是10位 custSN23位
+        如果 input.length() * 1.2 计算结果大于 32，则使用计算结果作为容量
+        如果 input.length() * 1.2 计算结果小于 32，则使用 32 作为容量*/
+        int allocateSpaceNum = Math.max(32, (int) (input.length() * 1.2));
+        StringBuilder result = new StringBuilder(allocateSpaceNum);
+        result.append('(');
+        boolean first = true;
         try (BufferedReader reader = new BufferedReader(new StringReader(input))) {
-            StringBuilder result = new StringBuilder(input.length() + 100);
-            result.append('(');
-            boolean first = true;
             String line;
             // 逐行读取处理
             while ((line = reader.readLine()) != null) {
-                // 过滤空行
-                if (line != null && !line.trim().isEmpty()) {
-                    if (!first) {
-                        result.append(',');
+                // 过滤空行（trim后为空的行）
+                if (!line.trim().isEmpty()) {
+                    // 去除行中的空格
+                    String cleanedLine = line.replaceAll("\\s+", "");
+                    if (!cleanedLine.isEmpty()) {
+                        if (!first) {
+                            result.append(',');
+                        }
+                        result.append('\'').append(cleanedLine).append('\'');
+                        first = false;
                     }
-                    result.append('\'').append(line).append('\'');
-                    first = false;
                 }
             }
             result.append(')');
             return result.toString();
         } catch (IOException e) {
             // 正常情况下不会发生IOException，因为是StringReader
-            return "executeStringOperation方法执行错误";
+            return "(executeStringOperation方法执行错误)";
         }
     }
 
