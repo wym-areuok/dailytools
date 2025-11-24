@@ -28,7 +28,7 @@
 18. 连接池监视：监视当前系统数据库连接池状态，可进行分析SQL找出系统性能瓶颈。
 
 ## 备注
-sql脚本在不同服务器的sqlserver导入时要根据sqlserver的安装路径修改脚本中的路径和指定编码(导出sql时如指定则忽略)：
+1. sql脚本在不同服务器的sqlserver导入时要根据sqlserver的安装路径修改脚本中的路径和指定编码(导出sql时如指定则忽略)：
 ```javascript
 FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER02\MSSQL\DATA
 
@@ -46,4 +46,17 @@ CREATE DATABASE [dailytools]
 ( NAME = N'dailytools_log', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL16.MSSQLSERVER02\MSSQL\DATA\dailytools_log.ldf' , SIZE = 8192KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
  COLLATE Chinese_Taiwan_Stroke_BIN
  WITH CATALOG_COLLATION = DATABASE_DEFAULT, LEDGER = OFF
+```
+2.stringTool模块相关的表string_tool_temp(用于大数量级字符串导入到db存储)
+```javascript
+-- 如果存在旧表，先删除
+DROP TABLE IF EXISTS string_tool_temp;
+-- 创建新表 id自增1
+CREATE TABLE string_tool_temp (
+    id BIGINT NOT NULL IDENTITY(1,1) PRIMARY KEY,
+    data NVARCHAR(100) NOT NULL,
+    user_id INT NOT NULL,
+    -- 在创建表的同时创建索引
+    INDEX IX_string_tool_temp_user_id NONCLUSTERED (user_id)
+);
 ```

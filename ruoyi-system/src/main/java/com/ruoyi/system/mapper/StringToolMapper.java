@@ -1,6 +1,7 @@
 package com.ruoyi.system.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * @Author: weiyiming
@@ -10,12 +11,16 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface StringToolMapper {
     /**
-     * 清空表数据
+     * 删除指定用户的数据
      */
-    void truncateTable();
-
+    void deleteByUserId(@Param("userId") Long userId);
+    /**
+     * 查询指定用户的记录数
+     */
+    int countByUserId(@Param("userId") Long userId);
     /**
      * 为表创建索引
      */
     void createIndex();
+
 }

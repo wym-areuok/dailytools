@@ -35,6 +35,10 @@ public class StringToolServiceImpl implements IStringToolService {
     // 根据系统内存动态计算批处理大小
     private static final int BATCH_SIZE = calculateBatchSize();
 
+    // 定义资源限制参数
+    private static final long MAX_PROCESSING_TIME = 10 * 60 * 1000; // 最大处理时间10分钟
+    private static final int MAX_ROWS = 1000000; // 最大处理行数100万行
+
     /**
      * 执行字符串处理操作(中小数量级数据)
      *
@@ -122,16 +126,17 @@ public class StringToolServiceImpl implements IStringToolService {
     /**
      * 根据可用内存动态计算批处理大小
      *
-     * @return 批处理大小
+     * @author weiyiming
+     * @date 2025-11-24
      */
     private static int calculateBatchSize() {
         long maxMemory = Runtime.getRuntime().maxMemory();
         if (maxMemory > 2L * 1024 * 1024 * 1024) { // > 2GB
-            return 3000;
+            return 2000;
         } else if (maxMemory > 1L * 1024 * 1024 * 1024) { // > 1GB
-            return 1500;
+            return 1000;
         } else {
-            return 750;
+            return 500;
         }
     }
 
@@ -141,28 +146,39 @@ public class StringToolServiceImpl implements IStringToolService {
      * @author weiyiming
      * @date 2025-11-24
      */
-    public void processExcelFile(String filePath) {
+    public void processExcelFile(String filePath, Long userId) {
         long startTime = System.currentTimeMillis();
-        log.info("开始处理Excel文件: {}", filePath);
-        // 1. 清空原表数据
-        stringToolMapper.truncateTable();
-        log.info("已清空原表数据");
-        // 2. 解析Excel文件并分批插入数据
+        log.info("开始处理Excel文件: {}, 用户ID: {}", filePath, userId);
+        // 添加资源保护机制
+        final long deadline = startTime + MAX_PROCESSING_TIME;
+        // 检查当前用户是否有数据
+        int recordCount = stringToolMapper.countByUserId(userId);
+        log.info("用户 {} 当前有 {} 条记录", userId, recordCount);
+        // 如果用户已有数据，则先删除再插入
+        if (recordCount > 0) {
+            stringToolMapper.deleteByUserId(userId);
+            log.info("已删除用户 {} 的原有数据，共 {} 条记录", userId, recordCount);
+        }
+        // 创建/检查索引
+        stringToolMapper.createIndex();
+        log.info("索引创建/检查完成");
+        // 解析Excel文件并分批插入数据
         try (FileInputStream fis = new FileInputStream(filePath);
              Workbook workbook = new XSSFWorkbook(fis)) {
             Sheet sheet = workbook.getSheetAt(0); // 获取第一个工作表
             int totalRows = sheet.getLastRowNum() + 1;
+            // 添加资源保护：检查行数是否超过限制
+            if (totalRows > MAX_ROWS) {
+                throw new RuntimeException("Excel行数超过最大限制: " + MAX_ROWS);
+            }
             log.info("Excel总行数: {}", totalRows);
             // 使用JDBC直接连接进行高性能批量插入
-            batchInsertWithStreaming(sheet);
+            batchInsertWithStreaming(sheet, userId, deadline);
             log.info("Excel数据处理完成，共处理 {} 行有效数据", totalRows - 1);
         } catch (Exception e) {
             log.error("处理Excel文件时发生错误: ", e);
             throw new RuntimeException("处理Excel文件失败", e);
         }
-        // 3. 创建索引
-        stringToolMapper.createIndex();
-        log.info("索引创建完成");
         long endTime = System.currentTimeMillis();
         log.info("整个处理过程耗时: {} ms", (endTime - startTime));
     }
@@ -170,10 +186,11 @@ public class StringToolServiceImpl implements IStringToolService {
     /**
      * 流式处理Excel数据并批量插入数据库，针对大数据量优化
      *
-     * @param sheet Excel工作表
+     * @author weiyiming
+     * @date 2025-11-24
      */
-    private void batchInsertWithStreaming(Sheet sheet) throws SQLException {
-        String sql = "INSERT INTO string_tool_temp(data) VALUES (?)";
+    private void batchInsertWithStreaming(Sheet sheet, Long userId, long deadline) throws SQLException {
+        String sql = "INSERT INTO string_tool_temp(data, user_id) VALUES (?, ?)";
         try (Connection connection = sqlSessionFactory.getConfiguration()
                 .getEnvironment().getDataSource().getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -182,6 +199,10 @@ public class StringToolServiceImpl implements IStringToolService {
             int totalProcessed = 0;
             // 跳过标题行，从第二行开始读取数据
             for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                // 添加资源保护：检查是否超时
+                if (System.currentTimeMillis() > deadline) {
+                    throw new RuntimeException("处理时间超过最大限制: " + (MAX_PROCESSING_TIME / 1000 / 60) + " 分钟");
+                }
                 Row row = sheet.getRow(rowIndex);
                 if (row == null) {
                     continue; // 跳过空行
@@ -195,6 +216,7 @@ public class StringToolServiceImpl implements IStringToolService {
                     continue; // 跳过空值
                 }
                 ps.setString(1, cellValue.trim());
+                ps.setLong(2, userId);
                 ps.addBatch();
                 count++;
                 totalProcessed++;
@@ -245,4 +267,5 @@ public class StringToolServiceImpl implements IStringToolService {
                 return "";
         }
     }
+
 }

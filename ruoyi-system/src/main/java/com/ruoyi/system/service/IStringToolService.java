@@ -13,5 +13,5 @@ public interface IStringToolService {
 
     void downloadTemplate(HttpServletResponse response);
 
-    void processExcelFile(String filePath);
+    void processExcelFile(String filePath, Long userId);
 }
