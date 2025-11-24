@@ -1,13 +1,18 @@
 package com.ruoyi.web.controller.dailytools;
 
+import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.common.core.domain.entity.SysUser;
-import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.system.service.IStringToolService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
 
 /**
@@ -51,6 +56,44 @@ public class StringToolController {
     @PostMapping("/downloadTemplate")
     public void downloadTemplate(HttpServletResponse response) {
         stringToolService.downloadTemplate(response);
+    }
+
+    /**
+     * 解析Excel写入数据库
+     *
+     * @author weiyiming
+     * @date 2025-11-24
+     */
+    @PostMapping("/upload")
+    @Log(title = "字符串工具处理", businessType = BusinessType.IMPORT)
+    public AjaxResult uploadAndProcessExcel(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return AjaxResult.error("上传文件不能为空");
+            }
+            // 保存文件到临时位置
+            String originalFilename = file.getOriginalFilename();
+            String extension = originalFilename != null && originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".xlsx";
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
+            String fileName = "excel_" + sdf.format(new Date()) + extension;
+            String filePath = System.getProperty("java.io.tmpdir") + File.separator + fileName;
+            File destFile = new File(filePath);
+            file.transferTo(destFile);
+            // 异步处理Excel文件
+            new Thread(() -> {
+                try {
+                    stringToolService.processExcelFile(filePath);
+                } finally {
+                    // 处理完成后删除临时文件
+                    destFile.delete();
+                }
+            }).start();
+            return AjaxResult.success("文件上传成功，正在后台处理，请稍后查看string_tool_temp表的内容");
+        } catch (IOException e) {
+            return AjaxResult.error("文件上传失败：" + e.getMessage());
+        } catch (Exception e) {
+            return AjaxResult.error("处理过程中发生错误：" + e.getMessage());
+        }
     }
 
 }

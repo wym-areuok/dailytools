@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.StringToolMapper">
+
+    <update id="truncateTable">
+        TRUNCATE TABLE string_tool_temp
+    </update>
+
+    <update id="createIndex">
+        IF EXISTS (SELECT name FROM sysindexes WHERE name = 'IX_string_tool_temp_id')
+        DROP INDEX IX_string_tool_temp_id ON string_tool_temp
+        CREATE NONCLUSTERED INDEX IX_string_tool_temp_id ON string_tool_temp(id)
+    </update>
+
+</mapper>
