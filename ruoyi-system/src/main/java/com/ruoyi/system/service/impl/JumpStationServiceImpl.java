@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @Author: weiyiming
@@ -67,18 +68,23 @@ public class JumpStationServiceImpl implements IJumpStationService {
         String mcbSnoList = String.join(",", Collections.nCopies(snList.size(), "?")); // 先把snList处理成用于McbSno IN查询的形式
         for (SysDictData dbInfo : dbList) { // 按顺序遍历数据库配置进行查询
             String dbIdentifier = dbInfo.getDictValue();
-            StringBuilder sql = new StringBuilder();
+            StringBuilder snSql = new StringBuilder();
             /*因为sn表数据比较大,慎用select * 所以虽然使用in 也要加上top*/
             //sql.append("SELECT TOP 10000 * FROM [").append(dbIdentifier).append("].").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
             /*为了测试*/
-            sql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
+            snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
             try {
                 List<SnInfoVO> result = jdbcTemplate.query(
-                        sql.toString(),
+                        snSql.toString(),
                         snList.toArray(),
                         new BeanPropertyRowMapper<>(SnInfoVO.class)
                 );
                 if (!result.isEmpty()) { // 如果在当前数据库中查询到数据 则返回结果 不再查询其他数据库
+                    /*检查model字段是否一致*/
+                    String modelName = validateModelConsistency(result);
+                    /*根据model获取SFC*/
+                    String sfc = getSfcByModel(jumpType, modelName);
+                    result.forEach(snInfo -> snInfo.setSfc(sfc));
                     return result;
                 }
             } catch (DataAccessException e) {
@@ -87,6 +93,59 @@ public class JumpStationServiceImpl implements IJumpStationService {
             }
         }
         return new ArrayList<>(); // 如果所有数据库都没查到数据 返回空列表
+    }
+
+    /**
+     * 验证SN列表中所有项目的model字段是否一致，并返回基准model值 防止不同model的SN进行跳站
+     *
+     * @author weiyiming
+     * @date 2025-12-04
+     */
+    private String validateModelConsistency(List<SnInfoVO> result) {
+        /*检查model为空的情况并收集对应的SN*/
+        List<String> nullModelSnList = result.stream()
+                .filter(snInfo -> snInfo.getModel() == null || snInfo.getModel().isEmpty())
+                .map(SnInfoVO::getMcbSno)
+                .collect(Collectors.toList());
+        if (!nullModelSnList.isEmpty()) {
+            throw new ServiceException("以下SN的机型为空: " + String.join(", ", nullModelSnList));
+        }
+        String baseModel = result.get(0).getModel();
+        /*查找与基准model不一致的SN*/
+        List<String> inconsistentSnList = result.stream()
+                .filter(snInfo -> !Objects.equals(baseModel, snInfo.getModel()))
+                .map(SnInfoVO::getMcbSno)
+                .collect(Collectors.toList());
+        if (!inconsistentSnList.isEmpty()) {
+            throw new ServiceException("以下SN的机型与其他不一致: " + String.join(", ", inconsistentSnList) +
+                    "。基准机型为: " + baseModel);
+        }
+        return baseModel;
+    }
+
+    /**
+     * 根据model获取对应的SFC
+     *
+     * @author weiyiming
+     * @date 2025-12-04
+     */
+    private String getSfcByModel(String jumpType, String modelName) {
+        String sfcTableName = dictDataService.selectDictByTypeAndLabel(jumpType, "SFC");
+        if (sfcTableName == null || sfcTableName.isEmpty()) {
+            throw new ServiceException("跳站类型SFC配置不完整: " + jumpType);
+        }
+        String sfcSql = "SELECT Flow FROM " + sfcTableName + " WHERE Model = ?";
+        try {
+            List<String> sfcList = jdbcTemplate.queryForList(sfcSql, String.class, modelName);
+            if (sfcList.isEmpty()) {
+                throw new ServiceException("未找到model '" + modelName + "' 对应的SFC配置");
+            } else if (sfcList.size() > 1) {
+                throw new ServiceException("model '" + modelName + "' 对应多个SFC配置，请检查数据");
+            }
+            return sfcList.get(0);
+        } catch (DataAccessException e) {
+            throw new ServiceException("查询SFC信息失败: " + e.getMessage());
+        }
     }
 
     /**

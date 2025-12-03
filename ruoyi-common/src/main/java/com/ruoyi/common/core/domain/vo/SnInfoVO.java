@@ -67,4 +67,8 @@ public class SnInfoVO {
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date udt;
+    /**
+     * 途程SFC
+     */
+    private String sfc;
 }
