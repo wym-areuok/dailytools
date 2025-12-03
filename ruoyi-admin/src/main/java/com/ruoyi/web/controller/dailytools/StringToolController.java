@@ -72,30 +72,26 @@ public class StringToolController {
             if (file.isEmpty()) {
                 return AjaxResult.error("上传文件不能为空");
             }
-            // 获取当前用户ID
             Long userId;
             try {
-                userId = SecurityUtils.getUserId();
+                userId = SecurityUtils.getUserId(); // 获取当前用户ID
             } catch (Exception e) {
                 return AjaxResult.error("未能获取到当前用户信息，请重新登录后重试");
             }
-            // 保存文件到临时位置
-            String originalFilename = file.getOriginalFilename();
+            String originalFilename = file.getOriginalFilename(); // 保存文件到临时位置
             String extension = originalFilename != null && originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".xlsx";
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
             String fileName = "excel_" + sdf.format(new Date()) + extension;
             String filePath = System.getProperty("java.io.tmpdir") + File.separator + fileName;
             File destFile = new File(filePath);
             file.transferTo(destFile);
-            // 异步处理Excel文件
-            new Thread(() -> {
+            new Thread(() -> { // 异步处理Excel文件
                 try {
                     stringToolService.processExcelFile(filePath, userId);
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
-                    // 处理完成后删除临时文件
-                    if (destFile.exists()) {
+                    if (destFile.exists()) { // 处理完成后删除临时文件
                         destFile.delete();
                     }
                 }
@@ -107,5 +103,4 @@ public class StringToolController {
             return AjaxResult.error("处理过程中发生错误：" + e.getMessage());
         }
     }
-
 }

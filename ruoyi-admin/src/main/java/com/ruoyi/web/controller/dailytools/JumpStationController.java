@@ -1,13 +1,14 @@
 package com.ruoyi.web.controller.dailytools;
 
+import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.domain.vo.SnInfoVO;
+import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.system.service.IJumpStationService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -17,9 +18,37 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/dailytools/jumpStation")
-public class JumpStationController {
+public class JumpStationController extends BaseController {
     @Autowired
     private IJumpStationService jumpStationService;
+
+    /**
+     * 获取站点List name-code
+     *
+     * @author weiyiming
+     * @date 2025-12-02
+     */
+    @GetMapping("/getStationList")
+    public AjaxResult getStationList(@RequestParam String jumpType) {
+        List<Map<String, Object>> stationList = jumpStationService.getStationList(jumpType);
+        return AjaxResult.success(stationList);
+    }
+
+    /**
+     * 查询SN的信息
+     *
+     * @author weiyiming
+     * @date 2025-12-02
+     */
+    @PostMapping("/list")
+    public TableDataInfo list(@RequestBody Map<String, Object> data) {
+        @SuppressWarnings("unchecked")
+        List<String> snList = (List<String>) data.get("snList");
+        String jumpType = (String) data.get("jumpType");
+        startPage();
+        List<SnInfoVO> list = jumpStationService.list(snList, jumpType);
+        return getDataTable(list);
+    }
 
     /**
      * 执行跳站

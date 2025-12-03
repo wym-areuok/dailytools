@@ -26,16 +26,13 @@ import org.slf4j.LoggerFactory;
  */
 @Service
 public class StringToolServiceImpl implements IStringToolService {
-    private static final Logger log = LoggerFactory.getLogger(StringToolServiceImpl.class);
-
     @Autowired
     private StringToolMapper stringToolMapper;
     @Autowired
     private SqlSessionFactory sqlSessionFactory;
-    // 根据系统内存动态计算批处理大小
-    private static final int BATCH_SIZE = calculateBatchSize();
 
-    // 定义资源限制参数
+    private static final Logger log = LoggerFactory.getLogger(StringToolServiceImpl.class);
+    private static final int BATCH_SIZE = calculateBatchSize(); // 根据系统内存动态计算批处理大小
     private static final long MAX_PROCESSING_TIME = 10 * 60 * 1000; // 最大处理时间10分钟
     private static final int MAX_ROWS = 1000000; // 最大处理行数100万行
 
@@ -45,8 +42,8 @@ public class StringToolServiceImpl implements IStringToolService {
      * @author weiyiming
      * @date 2025-11-21
      */
+    @Override
     public String execute(String input) {
-        // 空值检查
         if (input == null) {
             return "()";
         }
@@ -59,12 +56,9 @@ public class StringToolServiceImpl implements IStringToolService {
         boolean first = true;
         try (BufferedReader reader = new BufferedReader(new StringReader(input))) {
             String line;
-            // 逐行读取处理
-            while ((line = reader.readLine()) != null) {
-                // 过滤空行（trim后为空的行）
-                if (!line.trim().isEmpty()) {
-                    // 去除行中的空格
-                    String cleanedLine = line.replaceAll("\\s+", "");
+            while ((line = reader.readLine()) != null) { // 逐行读取处理
+                if (!line.trim().isEmpty()) { // 过滤空行（trim后为空的行）
+                    String cleanedLine = line.replaceAll("\\s+", ""); // 去除行中的空格
                     if (!cleanedLine.isEmpty()) {
                         if (!first) {
                             result.append(',');
@@ -76,8 +70,7 @@ public class StringToolServiceImpl implements IStringToolService {
             }
             result.append(')');
             return result.toString();
-        } catch (IOException e) {
-            // 正常情况下不会发生IOException，因为是StringReader
+        } catch (IOException e) { // 正常情况下不会发生IOException 因为是StringReader
             return "(executeStringOperation方法执行错误)";
         }
     }
@@ -88,35 +81,32 @@ public class StringToolServiceImpl implements IStringToolService {
      * @author weiyiming
      * @date 2025-11-22
      */
+    @Override
     public void downloadTemplate(HttpServletResponse response) {
         try {
-            // 设置响应头
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); // 设置响应头
             response.setCharacterEncoding("utf-8");
             response.setHeader("Content-Disposition", "attachment; filename=stringToolTemplate.xlsx");
-            // 创建工作簿
-            Workbook workbook = new XSSFWorkbook();
+            Workbook workbook = new XSSFWorkbook(); // 创建工作簿
             Sheet sheet = workbook.createSheet("StringProcessTemplate");
-            // 创建样式 - 居中对齐且为文本格式
+            /*创建样式 - 居中对齐且为文本格式*/
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setAlignment(HorizontalAlignment.CENTER); // 水平居中
             headerStyle.setVerticalAlignment(VerticalAlignment.CENTER); // 垂直居中
             DataFormat dataFormat = workbook.createDataFormat();
             headerStyle.setDataFormat(dataFormat.getFormat("@")); // 文本格式
-            // 创建标题行
+            /*创建标题行*/
             Row headerRow = sheet.createRow(0);
             Cell headerCell = headerRow.createCell(0);
             headerCell.setCellValue("StringToBeProcessed");
             headerCell.setCellStyle(headerStyle); // 应用样式
-            // 创建示例行
+            /*创建示例行*/
             Row exampleRow = sheet.createRow(1);
             Cell exampleCell = exampleRow.createCell(0);
             exampleCell.setCellValue("SNQWERTYUI");
             exampleCell.setCellStyle(headerStyle); // 应用相同样式
-            // 设置列宽
-            sheet.setColumnWidth(0, 30 * 256);
-            // 写入响应流
-            workbook.write(response.getOutputStream());
+            sheet.setColumnWidth(0, 30 * 256); // 设置列宽
+            workbook.write(response.getOutputStream()); // 写入响应流
             workbook.close();
         } catch (IOException e) {
             throw new UtilException("生成模板文件失败");
@@ -146,34 +136,28 @@ public class StringToolServiceImpl implements IStringToolService {
      * @author weiyiming
      * @date 2025-11-24
      */
+    @Override
     public void processExcelFile(String filePath, Long userId) {
         long startTime = System.currentTimeMillis();
         log.info("开始处理Excel文件: {}, 用户ID: {}", filePath, userId);
-        // 添加资源保护机制
-        final long deadline = startTime + MAX_PROCESSING_TIME;
-        // 检查当前用户是否有数据
-        int recordCount = stringToolMapper.countByUserId(userId);
+        final long deadline = startTime + MAX_PROCESSING_TIME; // 添加资源保护机制
+        int recordCount = stringToolMapper.countByUserId(userId); // 检查当前用户是否有数据
         log.info("用户 {} 当前有 {} 条记录", userId, recordCount);
-        // 如果用户已有数据，则先删除再插入
-        if (recordCount > 0) {
+        if (recordCount > 0) { // 如果用户已有数据 则先删除再插入
             stringToolMapper.deleteByUserId(userId);
             log.info("已删除用户 {} 的原有数据，共 {} 条记录", userId, recordCount);
         }
-        // 创建/检查索引
-        stringToolMapper.createIndex();
+        stringToolMapper.createIndex(); // 创建/检查索引
         log.info("索引创建/检查完成");
-        // 解析Excel文件并分批插入数据
-        try (FileInputStream fis = new FileInputStream(filePath);
+        try (FileInputStream fis = new FileInputStream(filePath); // 解析Excel文件并分批插入数据
              Workbook workbook = new XSSFWorkbook(fis)) {
             Sheet sheet = workbook.getSheetAt(0); // 获取第一个工作表
             int totalRows = sheet.getLastRowNum() + 1;
-            // 添加资源保护：检查行数是否超过限制
-            if (totalRows > MAX_ROWS) {
+            if (totalRows > MAX_ROWS) { // 添加资源保护：检查行数是否超过限制
                 throw new RuntimeException("Excel行数超过最大限制: " + MAX_ROWS);
             }
             log.info("Excel总行数: {}", totalRows);
-            // 使用JDBC直接连接进行高性能批量插入
-            batchInsertWithStreaming(sheet, userId, deadline);
+            batchInsertWithStreaming(sheet, userId, deadline); // 使用JDBC直接连接进行高性能批量插入
             log.info("Excel数据处理完成，共处理 {} 行有效数据", totalRows - 1);
         } catch (Exception e) {
             log.error("处理Excel文件时发生错误: ", e);
@@ -184,7 +168,7 @@ public class StringToolServiceImpl implements IStringToolService {
     }
 
     /**
-     * 流式处理Excel数据并批量插入数据库，针对大数据量优化
+     * 流式处理Excel数据并批量插入数据库 针对大数据量优化
      *
      * @author weiyiming
      * @date 2025-11-24
@@ -197,10 +181,8 @@ public class StringToolServiceImpl implements IStringToolService {
             connection.setAutoCommit(false);
             int count = 0;
             int totalProcessed = 0;
-            // 跳过标题行，从第二行开始读取数据
-            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-                // 添加资源保护：检查是否超时
-                if (System.currentTimeMillis() > deadline) {
+            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) { // 跳过标题行 从第二行开始读取数据
+                if (System.currentTimeMillis() > deadline) { // 添加资源保护：检查是否超时
                     throw new RuntimeException("处理时间超过最大限制: " + (MAX_PROCESSING_TIME / 1000 / 60) + " 分钟");
                 }
                 Row row = sheet.getRow(rowIndex);
@@ -220,8 +202,7 @@ public class StringToolServiceImpl implements IStringToolService {
                 ps.addBatch();
                 count++;
                 totalProcessed++;
-                // 达到批次大小时执行批量插入
-                if (count >= BATCH_SIZE) {
+                if (count >= BATCH_SIZE) { // 达到批次大小时执行批量插入
                     ps.executeBatch();
                     connection.commit();
                     ps.clearBatch();
@@ -229,8 +210,7 @@ public class StringToolServiceImpl implements IStringToolService {
                     log.info("已插入 {} 条记录", totalProcessed);
                 }
             }
-            // 处理剩余不足一批次的数据
-            if (count > 0) {
+            if (count > 0) { // 处理剩余不足一批次的数据
                 ps.executeBatch();
                 connection.commit();
                 log.info("最后插入 {} 条记录", count);
@@ -255,7 +235,7 @@ public class StringToolServiceImpl implements IStringToolService {
                 if (DateUtil.isCellDateFormatted(cell)) {
                     return cell.getDateCellValue().toString();
                 } else {
-                    // 防止科学计数法
+                    /*防止科学计数法*/
                     DataFormatter formatter = new DataFormatter();
                     return formatter.formatCellValue(cell);
                 }
@@ -267,5 +247,4 @@ public class StringToolServiceImpl implements IStringToolService {
                 return "";
         }
     }
-
 }
