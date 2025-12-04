@@ -59,8 +59,11 @@ public class JumpStationServiceImpl implements IJumpStationService {
      */
     @Override
     public List<SnInfoVO> list(List<String> snList, String jumpType) {
-        if (snList == null || snList.isEmpty() || jumpType == null || jumpType.trim().isEmpty()) {
-            throw new ServiceException("snList或jumpType不能为空!");
+        if (snList == null || snList.isEmpty()) {
+            throw new ServiceException("sn不能为空!");
+        }
+        if (jumpType == null || jumpType.trim().isEmpty()) {
+            throw new ServiceException("jumpType不能为空!");
         }
         /*根据字典类型查询数据库名称F6|F3 利用循环先去查一个库的数据，查不到再查另外一个库 字典标签F6 value PTFIS-DB-71 F3 value IPTFIS-DB-70 不排除后续项目扩展到其他的DB*/
         List<SysDictData> dbList = dictDataService.selectDictDataByType("db_info");
@@ -74,11 +77,7 @@ public class JumpStationServiceImpl implements IJumpStationService {
             /*为了测试*/
             snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
             try {
-                List<SnInfoVO> result = jdbcTemplate.query(
-                        snSql.toString(),
-                        snList.toArray(),
-                        new BeanPropertyRowMapper<>(SnInfoVO.class)
-                );
+                List<SnInfoVO> result = jdbcTemplate.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
                 if (!result.isEmpty()) { // 如果在当前数据库中查询到数据 则返回结果 不再查询其他数据库
                     /*检查model字段是否一致*/
                     String modelName = validateModelConsistency(result);
@@ -95,6 +94,18 @@ public class JumpStationServiceImpl implements IJumpStationService {
         return new ArrayList<>(); // 如果所有数据库都没查到数据 返回空列表
     }
 
+
+    /**
+     * 执行跳站
+     *
+     * @author weiyiming
+     * @date 2025-12-05
+     */
+    @Override
+    public String execute(List<String> snList, String station, String jumpType, String remark) {
+        return "";
+    }
+
     /**
      * 验证SN列表中所有项目的model字段是否一致，并返回基准model值 防止不同model的SN进行跳站
      *
@@ -103,22 +114,15 @@ public class JumpStationServiceImpl implements IJumpStationService {
      */
     private String validateModelConsistency(List<SnInfoVO> result) {
         /*检查model为空的情况并收集对应的SN*/
-        List<String> nullModelSnList = result.stream()
-                .filter(snInfo -> snInfo.getModel() == null || snInfo.getModel().isEmpty())
-                .map(SnInfoVO::getMcbSno)
-                .collect(Collectors.toList());
+        List<String> nullModelSnList = result.stream().filter(snInfo -> snInfo.getModel() == null || snInfo.getModel().isEmpty()).map(SnInfoVO::getMcbSno).collect(Collectors.toList());
         if (!nullModelSnList.isEmpty()) {
             throw new ServiceException("以下SN的机型为空: " + String.join(", ", nullModelSnList));
         }
         String baseModel = result.get(0).getModel();
         /*查找与基准model不一致的SN*/
-        List<String> inconsistentSnList = result.stream()
-                .filter(snInfo -> !Objects.equals(baseModel, snInfo.getModel()))
-                .map(SnInfoVO::getMcbSno)
-                .collect(Collectors.toList());
+        List<String> inconsistentSnList = result.stream().filter(snInfo -> !Objects.equals(baseModel, snInfo.getModel())).map(SnInfoVO::getMcbSno).collect(Collectors.toList());
         if (!inconsistentSnList.isEmpty()) {
-            throw new ServiceException("以下SN的机型与其他不一致: " + String.join(", ", inconsistentSnList) +
-                    "。基准机型为: " + baseModel);
+            throw new ServiceException("以下SN的机型与其他不一致: " + String.join(", ", inconsistentSnList) + "。基准机型为: " + baseModel);
         }
         return baseModel;
     }
@@ -146,16 +150,5 @@ public class JumpStationServiceImpl implements IJumpStationService {
         } catch (DataAccessException e) {
             throw new ServiceException("查询SFC信息失败: " + e.getMessage());
         }
-    }
-
-    /**
-     * 执行跳站
-     *
-     * @author weiyiming
-     * @date 2025-11-27
-     */
-    @Override
-    public String execute(String input) {
-        return "";
     }
 }
