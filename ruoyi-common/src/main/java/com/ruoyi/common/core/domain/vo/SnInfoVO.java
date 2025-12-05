@@ -13,62 +13,36 @@ import java.util.Date;
  */
 @Data
 public class SnInfoVO {
-    /**
-     * SN序列号
-     */
+    /*SN ID*/
+    private int snoId;
+    /*SN序列号*/
     private String mcbSno;
-    /**
-     * 工单号
-     */
+    /*工单号*/
     private String wkNo;
-    /**
-     * 机型
-     */
+    /*机型*/
     private String model;
-    /**
-     * 线别
-     */
+    /*线别*/
     private String pdLine;
-    /**
-     * 站点code
-     */
+    /*站点code*/
     private String wc;
-    /**
-     * 版本号
-     */
+    /*版本号*/
     private String rev;
-    /**
-     * PCB版本号
-     */
+    /*PCB版本号*/
     private String pcb;
-    /**
-     * 是否过站
-     */
+    /*是否过站*/
     private String isPass;
-    /**
-     * 下一站
-     */
+    /*下一站*/
     private String nwc;
-    /**
-     * 状态
-     */
+    /*状态*/
     private String status;
-    /**
-     * PEN版本号
-     */
+    /*PEN版本号*/
     private String penNo;
-    /**
-     * 创建时间
-     */
+    /*创建时间*/
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date cdt;
-    /**
-     * 修改时间
-     */
+    /*修改时间*/
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date udt;
-    /**
-     * 途程SFC
-     */
+    /*途程SFC*/
     private String sfc;
 }

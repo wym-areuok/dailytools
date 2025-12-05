@@ -17,4 +17,6 @@ public interface IJumpStationService {
     List<SnInfoVO> list(List<String> snList, String jumpType);
 
     String execute(List<String> snList, String station, String jumpType, String remark);
+
+    String undoExecute(List<String> snList, String station, String jumpType, String remark);
 }

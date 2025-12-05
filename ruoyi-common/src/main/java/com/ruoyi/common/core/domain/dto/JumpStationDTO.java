@@ -11,8 +11,12 @@ import java.util.List;
  */
 @Data
 public class JumpStationDTO {
+    /*SN列表*/
     private List<String> snList;
+    /*站点*/
     private String station;
+    /*跳站类型*/
     private String jumpType;
+    /*跳站原因*/
     private String remark;
 }
