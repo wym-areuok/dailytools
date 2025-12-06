@@ -32,12 +32,15 @@ public class StringToolServiceImpl implements IStringToolService {
     private SqlSessionFactory sqlSessionFactory;
 
     private static final Logger log = LoggerFactory.getLogger(StringToolServiceImpl.class);
-    private static final int BATCH_SIZE = calculateBatchSize(); // 根据系统内存动态计算批处理大小
-    private static final long MAX_PROCESSING_TIME = 10 * 60 * 1000; // 最大处理时间10分钟
-    private static final int MAX_ROWS = 1000000; // 最大处理行数100万行
+    // 根据系统内存动态计算批处理大小
+    private static final int BATCH_SIZE = calculateBatchSize();
+    // 最大处理时间10分钟
+    private static final long MAX_PROCESSING_TIME = 10 * 60 * 1000;
+    // 最大处理行数100万行
+    private static final int MAX_ROWS = 1000000;
 
     /**
-     * 执行字符串处理操作(中小数量级数据)
+     * 执行字符串处理操作(中小数量级数据<=5w)
      *
      * @author weiyiming
      * @date 2025-11-21
@@ -56,9 +59,12 @@ public class StringToolServiceImpl implements IStringToolService {
         boolean first = true;
         try (BufferedReader reader = new BufferedReader(new StringReader(input))) {
             String line;
-            while ((line = reader.readLine()) != null) { // 逐行读取处理
-                if (!line.trim().isEmpty()) { // 过滤空行（trim后为空的行）
-                    String cleanedLine = line.replaceAll("\\s+", ""); // 去除行中的空格
+            // 逐行读取处理
+            while ((line = reader.readLine()) != null) {
+                // 过滤空行（trim后为空的行）
+                if (!line.trim().isEmpty()) {
+                    // 去除行中的空格
+                    String cleanedLine = line.replaceAll("\\s+", "");
                     if (!cleanedLine.isEmpty()) {
                         if (!first) {
                             result.append(',');
@@ -70,7 +76,8 @@ public class StringToolServiceImpl implements IStringToolService {
             }
             result.append(')');
             return result.toString();
-        } catch (IOException e) { // 正常情况下不会发生IOException 因为是StringReader
+            // 正常情况下不会发生IOException 因为是StringReader
+        } catch (IOException e) {
             return "(executeStringOperation方法执行错误)";
         }
     }
@@ -84,29 +91,38 @@ public class StringToolServiceImpl implements IStringToolService {
     @Override
     public void downloadTemplate(HttpServletResponse response) {
         try {
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); // 设置响应头
+            // 设置响应头
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("utf-8");
             response.setHeader("Content-Disposition", "attachment; filename=stringToolTemplate.xlsx");
-            Workbook workbook = new XSSFWorkbook(); // 创建工作簿
+            // 创建工作簿
+            Workbook workbook = new XSSFWorkbook();
             Sheet sheet = workbook.createSheet("StringProcessTemplate");
-            /*创建样式 - 居中对齐且为文本格式*/
+            // 创建样式 - 居中对齐且为文本格式
             CellStyle headerStyle = workbook.createCellStyle();
-            headerStyle.setAlignment(HorizontalAlignment.CENTER); // 水平居中
-            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER); // 垂直居中
+            // 水平居中
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            // 垂直居中
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
             DataFormat dataFormat = workbook.createDataFormat();
-            headerStyle.setDataFormat(dataFormat.getFormat("@")); // 文本格式
-            /*创建标题行*/
+            // 文本格式
+            headerStyle.setDataFormat(dataFormat.getFormat("@"));
+            // 创建标题行
             Row headerRow = sheet.createRow(0);
             Cell headerCell = headerRow.createCell(0);
             headerCell.setCellValue("StringToBeProcessed");
-            headerCell.setCellStyle(headerStyle); // 应用样式
-            /*创建示例行*/
+            // 应用样式
+            headerCell.setCellStyle(headerStyle);
+            // 创建示例行
             Row exampleRow = sheet.createRow(1);
             Cell exampleCell = exampleRow.createCell(0);
             exampleCell.setCellValue("SNQWERTYUI");
-            exampleCell.setCellStyle(headerStyle); // 应用相同样式
-            sheet.setColumnWidth(0, 30 * 256); // 设置列宽
-            workbook.write(response.getOutputStream()); // 写入响应流
+            // 应用相同样式
+            exampleCell.setCellStyle(headerStyle);
+            // 设置列宽
+            sheet.setColumnWidth(0, 30 * 256);
+            // 写入响应流
+            workbook.write(response.getOutputStream());
             workbook.close();
         } catch (IOException e) {
             throw new UtilException("生成模板文件失败");
@@ -121,9 +137,9 @@ public class StringToolServiceImpl implements IStringToolService {
      */
     private static int calculateBatchSize() {
         long maxMemory = Runtime.getRuntime().maxMemory();
-        if (maxMemory > 2L * 1024 * 1024 * 1024) { // > 2GB
+        if (maxMemory > 2L * 1024 * 1024 * 1024) {
             return 2000;
-        } else if (maxMemory > 1L * 1024 * 1024 * 1024) { // > 1GB
+        } else if (maxMemory > 1L * 1024 * 1024 * 1024) {
             return 1000;
         } else {
             return 500;
@@ -140,24 +156,35 @@ public class StringToolServiceImpl implements IStringToolService {
     public void processExcelFile(String filePath, Long userId) {
         long startTime = System.currentTimeMillis();
         log.info("开始处理Excel文件: {}, 用户ID: {}", filePath, userId);
-        final long deadline = startTime + MAX_PROCESSING_TIME; // 添加资源保护机制
-        int recordCount = stringToolMapper.countByUserId(userId); // 检查当前用户是否有数据
+        // 添加资源保护机制
+        final long deadline = startTime + MAX_PROCESSING_TIME;
+        // 检查当前用户是否有数据
+        int recordCount = stringToolMapper.countByUserId(userId);
         log.info("用户 {} 当前有 {} 条记录", userId, recordCount);
-        if (recordCount > 0) { // 如果用户已有数据 则先删除再插入
+        // 如果用户已有数据，则先删除再插入，确保删除完成后再进行下一步
+        if (recordCount > 0) {
+            log.info("开始删除用户 {} 的原有数据", userId);
+            long deleteStartTime = System.currentTimeMillis();
             stringToolMapper.deleteByUserId(userId);
-            log.info("已删除用户 {} 的原有数据，共 {} 条记录", userId, recordCount);
+            long deleteEndTime = System.currentTimeMillis();
+            log.info("已删除用户 {} 的原有数据，共 {} 条记录，耗时 {} ms", userId, recordCount, (deleteEndTime - deleteStartTime));
         }
-        stringToolMapper.createIndex(); // 创建/检查索引
+        // 创建/检查索引
+        stringToolMapper.createIndex();
         log.info("索引创建/检查完成");
-        try (FileInputStream fis = new FileInputStream(filePath); // 解析Excel文件并分批插入数据
+        // 解析Excel文件并分批插入数据
+        try (FileInputStream fis = new FileInputStream(filePath);
              Workbook workbook = new XSSFWorkbook(fis)) {
-            Sheet sheet = workbook.getSheetAt(0); // 获取第一个工作表
+            // 获取第一个工作表
+            Sheet sheet = workbook.getSheetAt(0);
             int totalRows = sheet.getLastRowNum() + 1;
-            if (totalRows > MAX_ROWS) { // 添加资源保护：检查行数是否超过限制
+            // 添加资源保护：检查行数是否超过限制
+            if (totalRows > MAX_ROWS) {
                 throw new RuntimeException("Excel行数超过最大限制: " + MAX_ROWS);
             }
             log.info("Excel总行数: {}", totalRows);
-            batchInsertWithStreaming(sheet, userId, deadline); // 使用JDBC直接连接进行高性能批量插入
+            // 使用JDBC直接连接进行批量插入
+            batchInsertWithStreaming(sheet, userId, deadline);
             log.info("Excel数据处理完成，共处理 {} 行有效数据", totalRows - 1);
         } catch (Exception e) {
             log.error("处理Excel文件时发生错误: ", e);
@@ -181,28 +208,35 @@ public class StringToolServiceImpl implements IStringToolService {
             connection.setAutoCommit(false);
             int count = 0;
             int totalProcessed = 0;
-            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) { // 跳过标题行 从第二行开始读取数据
-                if (System.currentTimeMillis() > deadline) { // 添加资源保护：检查是否超时
+            // 跳过标题行 从第二行开始读取数据
+            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                // 添加资源保护：检查是否超时
+                if (System.currentTimeMillis() > deadline) {
                     throw new RuntimeException("处理时间超过最大限制: " + (MAX_PROCESSING_TIME / 1000 / 60) + " 分钟");
                 }
                 Row row = sheet.getRow(rowIndex);
+                // 跳过空行
                 if (row == null) {
-                    continue; // 跳过空行
+                    continue;
                 }
-                Cell cell = row.getCell(0); // 获取第一列数据
+                // 获取第一列数据
+                Cell cell = row.getCell(0);
+                // 跳过空单元格
                 if (cell == null) {
-                    continue; // 跳过空单元格
+                    continue;
                 }
                 String cellValue = getCellValueAsString(cell);
+                // 跳过空值
                 if (cellValue == null || cellValue.trim().isEmpty()) {
-                    continue; // 跳过空值
+                    continue;
                 }
                 ps.setString(1, cellValue.trim());
                 ps.setLong(2, userId);
                 ps.addBatch();
                 count++;
                 totalProcessed++;
-                if (count >= BATCH_SIZE) { // 达到批次大小时执行批量插入
+                // 达到批次大小时执行批量插入
+                if (count >= BATCH_SIZE) {
                     ps.executeBatch();
                     connection.commit();
                     ps.clearBatch();
@@ -210,7 +244,8 @@ public class StringToolServiceImpl implements IStringToolService {
                     log.info("已插入 {} 条记录", totalProcessed);
                 }
             }
-            if (count > 0) { // 处理剩余不足一批次的数据
+            // 处理剩余不足一批次的数据
+            if (count > 0) {
                 ps.executeBatch();
                 connection.commit();
                 log.info("最后插入 {} 条记录", count);
@@ -235,7 +270,7 @@ public class StringToolServiceImpl implements IStringToolService {
                 if (DateUtil.isCellDateFormatted(cell)) {
                     return cell.getDateCellValue().toString();
                 } else {
-                    /*防止科学计数法*/
+                    // 防止科学计数法
                     DataFormatter formatter = new DataFormatter();
                     return formatter.formatCellValue(cell);
                 }

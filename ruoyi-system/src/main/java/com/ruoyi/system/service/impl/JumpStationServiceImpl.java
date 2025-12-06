@@ -12,6 +12,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,7 +43,6 @@ public class JumpStationServiceImpl implements IJumpStationService {
         if (tableName == null || tableName.isEmpty()) {
             throw new ServiceException("跳站类型WC配置不完整: " + jumpType);
         }
-        /*构建SQL查询语句 执行查询*/
         String sql = "SELECT WC AS stationCode, Description AS stationName FROM " + tableName.toUpperCase(Locale.ROOT) + " ORDER BY WC";
         try {
             return jdbcTemplate.queryForList(sql); // 执行查询并返回结果
@@ -60,38 +60,44 @@ public class JumpStationServiceImpl implements IJumpStationService {
     @Override
     public List<SnInfoVO> list(List<String> snList, String jumpType) {
         if (snList == null || snList.isEmpty()) {
-            throw new ServiceException("sn不能为空!");
+            throw new ServiceException("SN列表不能为空!");
         }
         if (jumpType == null || jumpType.trim().isEmpty()) {
-            throw new ServiceException("jumpType不能为空!");
+            throw new ServiceException("跳站类型不能为空!");
         }
-        /*根据字典类型查询数据库名称F6|F3 利用循环先去查一个库的数据，查不到再查另外一个库 字典标签F6 value PTFIS-DB-71 F3 value IPTFIS-DB-70 不排除后续项目扩展到其他的DB*/
+        // 根据字典类型查询数据库名称F6|F3 利用循环先去查一个库的数据 查不到再查另外一个库 字典标签F6 value PTFIS-DB-71 F3 value IPTFIS-DB-70 不排除后续项目扩展到其他的DB
         List<SysDictData> dbList = dictDataService.selectDictDataByType("db_info");
         String tableName = dictDataService.selectDictByTypeAndLabel(jumpType, "SN");
-        String mcbSnoList = String.join(",", Collections.nCopies(snList.size(), "?")); // 先把snList处理成用于McbSno IN查询的形式
-        for (SysDictData dbInfo : dbList) { // 按顺序遍历数据库配置进行查询
+        if (tableName == null || tableName.isEmpty()) {
+            throw new ServiceException("跳站类型SN配置不完整: " + jumpType);
+        }
+        // 先把snList处理成用于McbSno IN查询的形式
+        String mcbSnoList = String.join(",", Collections.nCopies(snList.size(), "?"));
+        for (SysDictData dbInfo : dbList) {
             String dbIdentifier = dbInfo.getDictValue();
             StringBuilder snSql = new StringBuilder();
-            /*因为sn表数据比较大,慎用select * 所以虽然使用in 也要加上top*/
-            //sql.append("SELECT TOP 10000 * FROM [").append(dbIdentifier).append("].").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
-            /*为了测试*/
+            // 因为sn表数据比较大,慎用select * 所以虽然使用in 也要加上top
+            // sql.append("SELECT TOP 10000 * FROM [").append(dbIdentifier).append("].").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
+            // TODO 为了测试
             snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
             try {
                 List<SnInfoVO> result = jdbcTemplate.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
                 if (!result.isEmpty()) { // 如果在当前数据库中查询到数据 则返回结果 不再查询其他数据库
-                    /*检查model字段是否一致*/
+                    // 检查model字段是否一致
                     String modelName = validateModelConsistency(result);
-                    /*根据model获取SFC*/
+                    // 根据model获取SFC
                     String sfc = getSfcByModel(jumpType, modelName);
                     result.forEach(snInfo -> snInfo.setSfc(sfc));
                     return result;
                 }
             } catch (DataAccessException e) {
-                /*记录日志 但不中断流程 继续尝试下一个数据库*/
+                // 记录日志 但不中断流程 继续尝试下一个数据库
                 logger.warn("查询数据库 {} 时发生错误: {}", dbIdentifier, e.getMessage());
             }
         }
-        return new ArrayList<>(); // 如果所有数据库都没查到数据 返回空列表
+        // 如果所有数据库都没查到数据 返回空列表
+        logger.info("未找到SN列表中的任何数据: {}", String.join(", ", snList));
+        return new ArrayList<>();
     }
 
     /**
@@ -101,6 +107,7 @@ public class JumpStationServiceImpl implements IJumpStationService {
      * @date 2025-12-05
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String execute(List<String> snList, String station, String jumpType, String remark) {
         List<SysDictData> dbList = dictDataService.selectDictDataByType("db_info");
         String tableName = dictDataService.selectDictByTypeAndLabel(jumpType, "SN");
@@ -119,13 +126,13 @@ public class JumpStationServiceImpl implements IJumpStationService {
             try {
                 List<SnInfoVO> result = jdbcTemplate.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
                 if (!result.isEmpty()) {
-                    return executeJumpInDatabase(result, station, jumpType, remark, dbIdentifier, tableName, logTableName);
+                    return executeJumpInDatabase(result, station, remark, dbIdentifier, tableName, logTableName);
                 }
             } catch (DataAccessException e) {
                 logger.warn("查询数据库 {} 时发生错误: {}", dbIdentifier, e.getMessage());
             }
         }
-        throw new ServiceException("未找到有效的SN信息");
+        throw new ServiceException("未找到有效的SN信息: " + String.join(", ", snList));
     }
 
     /**
@@ -134,25 +141,25 @@ public class JumpStationServiceImpl implements IJumpStationService {
      * @author weiyiming
      * @date 2025-12-06
      */
-    private String executeJumpInDatabase(List<SnInfoVO> snInfoList, String station, String jumpType,
-                                         String remark, String dbIdentifier, String tableName, String logTableName) {
+    @Transactional(rollbackFor = Exception.class)
+    private String executeJumpInDatabase(List<SnInfoVO> snInfoList, String station, String remark, String dbIdentifier, String tableName, String logTableName) {
         int successCount = 0;
         List<String> failedSnList = new ArrayList<>();
+        List<String> processedSnList = new ArrayList<>();
         for (SnInfoVO snInfo : snInfoList) {
             String sn = snInfo.getMcbSno();
-            String originalWc = snInfo.getNwc(); // 原始站点 跳站前的站点
-            int snoId = snInfo.getSnoId(); // 从SnInfoVO中获取SnoId（SNO表的主键）用来log表插入值
+            processedSnList.add(sn);
+            // 原始站点 跳站前的站点
+            String originalWc = snInfo.getNwc();
+            // 从SnInfoVO中获取SnoId（SNO表的主键）用来log表插入值
+            int snoId = snInfo.getSnoId();
             try {
-                String updateSql = "UPDATE " + tableName +
-                        " SET NWC = ?, udt = GETDATE() " +
-                        "WHERE McbSno = ?";
+                String updateSql = "UPDATE " + tableName + " SET NWC = ?, Udt = GETDATE() " + "WHERE McbSno = ?";
                 int updatedRows = jdbcTemplate.update(updateSql, station, sn);
                 if (updatedRows > 0) {
                     successCount++;
                     // 记录日志 - 使用SN表的主键ID作为LOG表的SnoId字段
-                    String logSql = "INSERT INTO " + logTableName +
-                            " (SnoId, McbSno, Original_WC, Dest_WC, Reason, Creator, Cdt) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, GETDATE())";
+                    String logSql = "INSERT INTO " + logTableName + " (SnoId, McbSno, Original_WC, Dest_WC, Reason, Creator, Cdt) " + "VALUES (?, ?, ?, ?, ?, ?, GETDATE())";
                     jdbcTemplate.update(logSql, snoId, sn, originalWc, station, remark, "MESTools");
                 } else {
                     failedSnList.add(sn);
@@ -160,6 +167,8 @@ public class JumpStationServiceImpl implements IJumpStationService {
             } catch (DataAccessException e) {
                 logger.error("跳站操作失败，SN: " + sn + " 数据库: " + dbIdentifier, e);
                 failedSnList.add(sn);
+                // 发生异常时抛出，触发事务回滚
+                throw new ServiceException("跳站操作失败，SN: " + sn + " 错误: " + e.getMessage());
             }
         }
         StringBuilder resultMsg = new StringBuilder();
@@ -167,6 +176,8 @@ public class JumpStationServiceImpl implements IJumpStationService {
         if (!failedSnList.isEmpty()) {
             resultMsg.append("，失败SN: ").append(String.join(", ", failedSnList));
         }
+        // 记录操作日志
+        logger.info("跳站操作完成。处理总数: {}, 成功数: {}, 失败SN: {}", processedSnList.size(), successCount, String.join(", ", failedSnList));
         return resultMsg.toString();
     }
 
@@ -177,13 +188,13 @@ public class JumpStationServiceImpl implements IJumpStationService {
      * @date 2025-12-04
      */
     private String validateModelConsistency(List<SnInfoVO> result) {
-        /*检查model为空的情况并收集对应的SN*/
+        // 检查model为空的情况并收集对应的SN
         List<String> nullModelSnList = result.stream().filter(snInfo -> snInfo.getModel() == null || snInfo.getModel().isEmpty()).map(SnInfoVO::getMcbSno).collect(Collectors.toList());
         if (!nullModelSnList.isEmpty()) {
             throw new ServiceException("以下SN的机型为空: " + String.join(", ", nullModelSnList));
         }
         String baseModel = result.get(0).getModel();
-        /*查找与基准model不一致的SN*/
+        // 查找与基准model不一致的SN
         List<String> inconsistentSnList = result.stream().filter(snInfo -> !Objects.equals(baseModel, snInfo.getModel())).map(SnInfoVO::getMcbSno).collect(Collectors.toList());
         if (!inconsistentSnList.isEmpty()) {
             throw new ServiceException("以下SN的机型与其他不一致: " + String.join(", ", inconsistentSnList) + "。基准机型为: " + baseModel);
@@ -206,9 +217,9 @@ public class JumpStationServiceImpl implements IJumpStationService {
         try {
             List<String> sfcList = jdbcTemplate.queryForList(sfcSql, String.class, modelName);
             if (sfcList.isEmpty()) {
-                throw new ServiceException("未找到model '" + modelName + "' 对应的SFC配置");
+                throw new ServiceException("未找到机型 '" + modelName + "' 对应的SFC配置");
             } else if (sfcList.size() > 1) {
-                throw new ServiceException("model '" + modelName + "' 对应多个SFC配置，请检查数据");
+                throw new ServiceException("机型 '" + modelName + "' 对应多个SFC配置，请检查数据");
             }
             return sfcList.get(0);
         } catch (DataAccessException e) {
