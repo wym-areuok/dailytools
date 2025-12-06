@@ -1,6 +1,5 @@
 package com.ruoyi.system.service.impl;
 
-import com.ruoyi.common.core.domain.dto.ChangeWcLogDTO;
 import com.ruoyi.common.core.domain.entity.SysDictData;
 import com.ruoyi.common.core.domain.vo.SnInfoVO;
 import com.ruoyi.common.exception.ServiceException;
@@ -95,7 +94,6 @@ public class JumpStationServiceImpl implements IJumpStationService {
         return new ArrayList<>(); // 如果所有数据库都没查到数据 返回空列表
     }
 
-
     /**
      * 执行跳站
      *
@@ -132,6 +130,9 @@ public class JumpStationServiceImpl implements IJumpStationService {
 
     /**
      * 在指定数据库中执行跳站操作
+     *
+     * @author weiyiming
+     * @date 2025-12-06
      */
     private String executeJumpInDatabase(List<SnInfoVO> snInfoList, String station, String jumpType,
                                          String remark, String dbIdentifier, String tableName, String logTableName) {
@@ -161,127 +162,12 @@ public class JumpStationServiceImpl implements IJumpStationService {
                 failedSnList.add(sn);
             }
         }
-        // 构造返回结果
         StringBuilder resultMsg = new StringBuilder();
         resultMsg.append("成功处理 ").append(successCount).append(" 个SN");
         if (!failedSnList.isEmpty()) {
             resultMsg.append("，失败SN: ").append(String.join(", ", failedSnList));
         }
         return resultMsg.toString();
-    }
-
-    /**
-     * 撤销跳站操作
-     *
-     * @author weiyiming
-     * @date 2025-12-05
-     */
-    @Override
-    public String undoExecute(List<String> snList, String station, String jumpType, String remark) {
-        // 获取数据库列表
-        List<SysDictData> dbList = dictDataService.selectDictDataByType("db_info");
-        String tableName = dictDataService.selectDictByTypeAndLabel(jumpType, "SN");
-        String logTableName = dictDataService.selectDictByTypeAndLabel(jumpType, "LOG");
-        if (tableName == null || tableName.isEmpty()) {
-            throw new ServiceException("跳站类型SN配置不完整: " + jumpType);
-        }
-        if (logTableName == null || logTableName.isEmpty()) {
-            throw new ServiceException("跳站类型LOG配置不完整: " + jumpType);
-        }
-        String mcbSnoList = String.join(",", Collections.nCopies(snList.size(), "?"));
-        for (SysDictData dbInfo : dbList) {
-            String dbIdentifier = dbInfo.getDictValue();
-            StringBuilder snSql = new StringBuilder();
-            snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
-            try {
-                List<SnInfoVO> result = jdbcTemplate.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
-                if (!result.isEmpty()) {
-                    // 在找到数据的同一个数据库中执行撤销跳站操作
-                    return undoJumpInDatabase(result, station, jumpType, remark, dbIdentifier, tableName, logTableName);
-                }
-            } catch (DataAccessException e) {
-                logger.warn("查询数据库 {} 时发生错误: {}", dbIdentifier, e.getMessage());
-            }
-        }
-        throw new ServiceException("未找到有效的SN信息");
-    }
-
-    /**
-     * 在指定数据库中执行撤销跳站操作
-     */
-    private String undoJumpInDatabase(List<SnInfoVO> snInfoList, String station, String jumpType,
-                                      String remark, String dbIdentifier, String tableName, String logTableName) {
-        int successCount = 0;
-        List<String> failedSnList = new ArrayList<>();
-        for (SnInfoVO snInfo : snInfoList) {
-            String sn = snInfo.getMcbSno();
-            ChangeWcLogDTO logInfo = getLatestLogInfoBySn(sn, logTableName); // 从日志表中获取原始站点 - 根据McbSno获取最新的一条记录
-            if (logInfo == null) {
-                failedSnList.add(sn + "(未找到日志信息)");
-                continue;
-            }
-            /*验证当前站点是否与目标站点一致*/
-            if (!station.equals(logInfo.getDestWc())) {
-                failedSnList.add(sn + "(当前站点与目标站点不匹配)");
-                continue;
-            }
-            String originalWc = logInfo.getOriginalWc();
-            int logId = logInfo.getId(); // 获取日志记录的ID 用于后续删除
-            int snoId = snInfo.getSnoId();
-            try {
-                String updateSql = "UPDATE " + tableName +
-                        " SET NWC = ?, udt = GETDATE() " +
-                        "WHERE McbSno = ?";
-                int updatedRows = jdbcTemplate.update(updateSql, originalWc, sn);
-                if (updatedRows > 0) {
-                    successCount++;
-                    /*记录撤销日志*/
-                    String logSql = "INSERT INTO " + logTableName +
-                            " (SnoId, McbSno, Original_WC, Dest_WC, Reason, Creator, Cdt) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, GETDATE())";
-                    jdbcTemplate.update(logSql, snoId, sn, station, originalWc, "撤销操作: " + remark, "System");
-                    /*删除原始的跳站日志记录*/
-                    String deleteLogSql = "DELETE FROM " + logTableName + " WHERE Id = ?";
-                    jdbcTemplate.update(deleteLogSql, logId);
-                } else {
-                    failedSnList.add(sn);
-                }
-            } catch (DataAccessException e) {
-                logger.error("撤销跳站操作失败，SN: " + sn + " 数据库: " + dbIdentifier, e);
-                failedSnList.add(sn);
-            }
-        }
-        StringBuilder resultMsg = new StringBuilder();
-        resultMsg.append("成功撤销 ").append(successCount).append(" 个SN的跳站操作");
-        if (!failedSnList.isEmpty()) {
-            resultMsg.append("，失败SN: ").append(String.join(", ", failedSnList));
-        }
-        return resultMsg.toString();
-    }
-
-    /**
-     * 从日志表中获取最新的日志信息（根据SN）
-     *
-     * @author weiyiming
-     * @date 2025-12-05
-     */
-    private ChangeWcLogDTO getLatestLogInfoBySn(String sn, String logTableName) {
-        try {
-            String sql = "SELECT TOP 1 Id, SnoId, Original_WC, Dest_WC FROM " + logTableName +
-                    " WHERE McbSno = ? " +
-                    "ORDER BY Cdt DESC";
-            return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
-                ChangeWcLogDTO logInfo = new ChangeWcLogDTO();
-                logInfo.setId(rs.getInt("Id")); // 获取日志记录的主键ID
-                logInfo.setSnoId(rs.getInt("SnoId"));
-                logInfo.setOriginalWc(rs.getString("Original_WC"));
-                logInfo.setDestWc(rs.getString("Dest_WC"));
-                return logInfo;
-            }, sn);
-        } catch (DataAccessException e) {
-            logger.error("查询日志信息失败，SN: " + sn, e);
-            return null;
-        }
     }
 
     /**

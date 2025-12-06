@@ -81,35 +81,4 @@ public class JumpStationController extends BaseController {
             return AjaxResult.error("跳站失败: " + e.getMessage());
         }
     }
-
-    /**
-     * 执行跳站撤回
-     *
-     * @author weiyiming
-     * @date 2025-12-05
-     */
-    @PostMapping("/undoExecute")
-    public AjaxResult undoExecute(@RequestBody JumpStationDTO jsDTO) {
-        try {
-            if (jsDTO.getSnList() == null || jsDTO.getSnList().isEmpty()) {
-                return AjaxResult.error("SN列表不能为空");
-            }
-            if (jsDTO.getJumpType() == null || jsDTO.getJumpType().isEmpty()) {
-                return AjaxResult.error("类型不能为空");
-            }
-            if (jsDTO.getRemark() == null || jsDTO.getRemark().isEmpty()) {
-                return AjaxResult.error("备注不能为空");
-            }
-            String result = jumpStationService.undoExecute(
-                    jsDTO.getSnList(),
-                    jsDTO.getStation(),
-                    jsDTO.getJumpType(),
-                    jsDTO.getRemark()
-            );
-            return AjaxResult.success("跳站成功", result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return AjaxResult.error("跳站失败: " + e.getMessage());
-        }
-    }
 }
