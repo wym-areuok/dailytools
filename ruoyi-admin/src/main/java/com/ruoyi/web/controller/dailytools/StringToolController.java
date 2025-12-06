@@ -4,6 +4,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.service.IStringToolService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,11 +27,12 @@ public class StringToolController {
     private IStringToolService stringToolService;
 
     /**
-     * 执行字符串处理操作(中小数量级数据<=5w)
+     * 执行字符串处理操作(中小数量级数据)
      *
      * @author weiyiming
      * @date 2025-11-21
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:execute')")
     @PostMapping("/execute")
     public AjaxResult execute(@RequestBody Map<String, Object> data) {
         try {
@@ -52,6 +54,7 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-22
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:download')")
     @PostMapping("/downloadTemplate")
     public void downloadTemplate(HttpServletResponse response) {
         stringToolService.downloadTemplate(response);
@@ -63,6 +66,7 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-24
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:upload')")
     @PostMapping("/upload")
     public AjaxResult uploadAndProcessExcel(@RequestParam("file") MultipartFile file) {
         try {
