@@ -45,7 +45,7 @@ public class JumpStationServiceImpl implements IJumpStationService {
         }
         String sql = "SELECT WC AS stationCode, Description AS stationName FROM " + tableName.toUpperCase(Locale.ROOT) + " ORDER BY WC";
         try {
-            return jdbcTemplate.queryForList(sql); // 执行查询并返回结果
+            return jdbcTemplate.queryForList(sql);
         } catch (DataAccessException e) {
             throw new ServiceException("查询站点信息失败: " + e.getMessage());
         }
@@ -82,7 +82,8 @@ public class JumpStationServiceImpl implements IJumpStationService {
             snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
             try {
                 List<SnInfoVO> result = jdbcTemplate.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
-                if (!result.isEmpty()) { // 如果在当前数据库中查询到数据 则返回结果 不再查询其他数据库
+                // 如果在当前数据库中查询到数据 则返回结果 不再查询其他数据库
+                if (!result.isEmpty()) {
                     // 检查model字段是否一致
                     String modelName = validateModelConsistency(result);
                     // 根据model获取SFC
