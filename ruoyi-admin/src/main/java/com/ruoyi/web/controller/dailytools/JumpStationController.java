@@ -7,6 +7,7 @@ import com.ruoyi.common.core.domain.vo.SnInfoVO;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.system.service.IJumpStationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,8 +32,13 @@ public class JumpStationController extends BaseController {
      */
     @GetMapping("/getStationList")
     public AjaxResult getStationList(@RequestParam String jumpType) {
-        List<Map<String, Object>> stationList = jumpStationService.getStationList(jumpType);
-        return AjaxResult.success(stationList);
+        try {
+            List<Map<String, Object>> stationList = jumpStationService.getStationList(jumpType);
+            return AjaxResult.success(stationList);
+        } catch (Exception e) {
+            logger.error("获取站点列表失败: ", e);
+            return AjaxResult.error("获取站点列表失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -41,11 +47,17 @@ public class JumpStationController extends BaseController {
      * @author weiyiming
      * @date 2025-12-02
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:jumpStation:query')")
     @PostMapping("/list")
     public TableDataInfo list(@RequestBody JumpStationDTO queryDTO) {
-        startPage();
-        List<SnInfoVO> list = jumpStationService.list(queryDTO.getSnList(), queryDTO.getJumpType());
-        return getDataTable(list);
+        try {
+            startPage();
+            List<SnInfoVO> list = jumpStationService.list(queryDTO.getSnList(), queryDTO.getJumpType());
+            return getDataTable(list);
+        } catch (Exception e) {
+            logger.error("查询SN信息失败: ", e);
+            throw new RuntimeException("查询SN信息失败: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -54,6 +66,7 @@ public class JumpStationController extends BaseController {
      * @author weiyiming
      * @date 2025-11-27
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:jumpStation:execute')")
     @PostMapping("/execute")
     public AjaxResult execute(@RequestBody JumpStationDTO jsDTO) {
         try {
@@ -64,51 +77,15 @@ public class JumpStationController extends BaseController {
                 return AjaxResult.error("目标站点不能为空");
             }
             if (jsDTO.getJumpType() == null || jsDTO.getJumpType().isEmpty()) {
-                return AjaxResult.error("类型不能为空");
+                return AjaxResult.error("跳站类型不能为空");
             }
             if (jsDTO.getRemark() == null || jsDTO.getRemark().isEmpty()) {
                 return AjaxResult.error("备注不能为空");
             }
-            String result = jumpStationService.execute(
-                    jsDTO.getSnList(),
-                    jsDTO.getStation(),
-                    jsDTO.getJumpType(),
-                    jsDTO.getRemark()
-            );
+            String result = jumpStationService.execute(jsDTO.getSnList(), jsDTO.getStation(), jsDTO.getJumpType(), jsDTO.getRemark());
             return AjaxResult.success("跳站成功", result);
         } catch (Exception e) {
-            e.printStackTrace();
-            return AjaxResult.error("跳站失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 执行跳站撤回
-     *
-     * @author weiyiming
-     * @date 2025-12-05
-     */
-    @PostMapping("/undoExecute")
-    public AjaxResult undoExecute(@RequestBody JumpStationDTO jsDTO) {
-        try {
-            if (jsDTO.getSnList() == null || jsDTO.getSnList().isEmpty()) {
-                return AjaxResult.error("SN列表不能为空");
-            }
-            if (jsDTO.getJumpType() == null || jsDTO.getJumpType().isEmpty()) {
-                return AjaxResult.error("类型不能为空");
-            }
-            if (jsDTO.getRemark() == null || jsDTO.getRemark().isEmpty()) {
-                return AjaxResult.error("备注不能为空");
-            }
-            String result = jumpStationService.undoExecute(
-                    jsDTO.getSnList(),
-                    jsDTO.getStation(),
-                    jsDTO.getJumpType(),
-                    jsDTO.getRemark()
-            );
-            return AjaxResult.success("跳站成功", result);
-        } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("跳站操作失败: ", e);
             return AjaxResult.error("跳站失败: " + e.getMessage());
         }
     }

@@ -18,5 +18,4 @@ public interface IJumpStationService {
 
     String execute(List<String> snList, String station, String jumpType, String remark);
 
-    String undoExecute(List<String> snList, String station, String jumpType, String remark);
 }

@@ -1,11 +1,10 @@
 package com.ruoyi.web.controller.dailytools;
 
-import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.service.IStringToolService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -33,6 +32,7 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-21
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:execute')")
     @PostMapping("/execute")
     public AjaxResult execute(@RequestBody Map<String, Object> data) {
         try {
@@ -54,6 +54,7 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-22
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:download')")
     @PostMapping("/downloadTemplate")
     public void downloadTemplate(HttpServletResponse response) {
         stringToolService.downloadTemplate(response);
@@ -65,33 +66,38 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-24
      */
+    @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:upload')")
     @PostMapping("/upload")
-    @Log(title = "字符串工具处理", businessType = BusinessType.IMPORT)
     public AjaxResult uploadAndProcessExcel(@RequestParam("file") MultipartFile file) {
         try {
             if (file.isEmpty()) {
                 return AjaxResult.error("上传文件不能为空");
             }
+            String username;
             Long userId;
             try {
-                userId = SecurityUtils.getUserId(); // 获取当前用户ID
+                username = SecurityUtils.getUsername();
+                userId = SecurityUtils.getUserId();
             } catch (Exception e) {
                 return AjaxResult.error("未能获取到当前用户信息，请重新登录后重试");
             }
-            String originalFilename = file.getOriginalFilename(); // 保存文件到临时位置
-            String extension = originalFilename != null && originalFilename.contains(".") ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".xlsx";
+            String originalFilename = file.getOriginalFilename();
+            String extension = originalFilename != null && originalFilename.contains(".") ?
+                    originalFilename.substring(originalFilename.lastIndexOf(".")) : ".xlsx";
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-            String fileName = "excel_" + sdf.format(new Date()) + extension;
+            // 在文件名中加入用户名，确保多用户环境下的文件唯一性
+            String fileName = "excel_" + username + "_" + sdf.format(new Date()) + extension;
             String filePath = System.getProperty("java.io.tmpdir") + File.separator + fileName;
             File destFile = new File(filePath);
             file.transferTo(destFile);
-            new Thread(() -> { // 异步处理Excel文件
+            new Thread(() -> {
                 try {
                     stringToolService.processExcelFile(filePath, userId);
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
-                    if (destFile.exists()) { // 处理完成后删除临时文件
+                    // 处理完成后删除临时文件
+                    if (destFile.exists()) {
                         destFile.delete();
                     }
                 }
