@@ -1,10 +1,12 @@
 package com.ruoyi.web.controller.dailytools;
 
+import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.dto.JumpStationDTO;
 import com.ruoyi.common.core.domain.vo.SnInfoVO;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.system.service.IJumpStationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -66,6 +68,7 @@ public class JumpStationController extends BaseController {
      * @author weiyiming
      * @date 2025-11-27
      */
+    @Log(title = "板卡跳站", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('dailyTools:jumpStation:execute')")
     @PostMapping("/execute")
     public AjaxResult execute(@RequestBody JumpStationDTO jsDTO) {

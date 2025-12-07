@@ -1,8 +1,10 @@
 package com.ruoyi.web.controller.dailytools;
 
+import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.dto.ChangePwdDTO;
+import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.system.service.IChangePwdService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -29,6 +31,7 @@ public class ChangePwdController extends BaseController {
      * @author weiyiming
      * @date 2025-12-07
      */
+    @Log(title = "FisWeb改密", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult changePwd(@Valid @RequestBody ChangePwdDTO pwdDTO) {
         try {

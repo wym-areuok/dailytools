@@ -1,6 +1,8 @@
 package com.ruoyi.web.controller.dailytools;
 
+import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.service.IStringToolService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +34,7 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-21
      */
+    @Log(title = "字符串工具", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:execute')")
     @PostMapping("/execute")
     public AjaxResult execute(@RequestBody Map<String, Object> data) {
@@ -54,6 +57,7 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-22
      */
+    @Log(title = "字符串工具", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:download')")
     @PostMapping("/downloadTemplate")
     public void downloadTemplate(HttpServletResponse response) {
@@ -66,6 +70,7 @@ public class StringToolController {
      * @author weiyiming
      * @date 2025-11-24
      */
+    @Log(title = "字符串工具", businessType = BusinessType.IMPORT)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:upload')")
     @PostMapping("/upload")
     public AjaxResult uploadAndProcessExcel(@RequestParam("file") MultipartFile file) {
