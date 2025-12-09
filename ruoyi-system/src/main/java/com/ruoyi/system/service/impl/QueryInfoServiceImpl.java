@@ -13,26 +13,45 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * @Author: weiyiming
+ * @CreateTime: 2025-12-10
+ * @Description: 资料查询
+ */
 @Service
 public class QueryInfoServiceImpl implements IQueryInfoService {
 
     @Autowired
     private QueryInfoMapper queryInfoMapper;
 
+    /**
+     * 根据infoId获取详情
+     *
+     * @param infoId
+     * @return
+     */
     @Override
     public QueryInfo selectQueryInfoByInfoId(Integer infoId) {
         return queryInfoMapper.selectQueryInfoByInfoId(infoId);
     }
 
-    public QueryInfo selectByInfoTitle(String infoTitle) {
-        return queryInfoMapper.selectByInfoTitle(infoTitle);
-    }
-
+    /**
+     * 列表查询
+     *
+     * @param queryInfo
+     * @return
+     */
     @Override
     public List<QueryInfo> selectQueryInfoList(QueryInfo queryInfo) {
         return queryInfoMapper.selectQueryInfoList(queryInfo);
     }
 
+    /**
+     * 新增并且部分字段设定默认值
+     *
+     * @param queryInfo
+     * @return
+     */
     @Override
     @Transactional
     public int insertQueryInfo(QueryInfo queryInfo) {
@@ -48,6 +67,11 @@ public class QueryInfoServiceImpl implements IQueryInfoService {
         return queryInfoMapper.insertQueryInfo(queryInfo);
     }
 
+    /**
+     * 工具类-校验
+     *
+     * @param info
+     */
     private void validateQueryInfo(QueryInfo info) {
         if (StringUtils.isEmpty(info.getInfoTitle())) {
             throw new ServiceException("资料标题不能为空");
@@ -55,8 +79,17 @@ public class QueryInfoServiceImpl implements IQueryInfoService {
         if (StringUtils.isEmpty(info.getInfoType())) {
             throw new ServiceException("资料类型不能为空");
         }
+        if (StringUtils.isEmpty(info.getInfoTags())) {
+            throw new ServiceException("至少选择一个标签");
+        }
     }
 
+    /**
+     * 更新
+     *
+     * @param queryInfo
+     * @return
+     */
     @Override
     @Transactional
     public int updateQueryInfo(QueryInfo queryInfo) {
@@ -66,18 +99,38 @@ public class QueryInfoServiceImpl implements IQueryInfoService {
         return queryInfoMapper.updateQueryInfo(queryInfo);
     }
 
+    /**
+     * 根据infoId删除
+     *
+     * @param infoId
+     * @return
+     */
     @Override
     @Transactional
     public int deleteQueryInfoByInfoId(Integer infoId) {
         return queryInfoMapper.deleteQueryInfoByInfoId(infoId);
     }
 
+    /**
+     * 根据infoIds批量删除
+     *
+     * @param infoIds
+     * @return
+     */
     @Override
     @Transactional
     public int deleteQueryInfoByInfoIds(Integer[] infoIds) {
         return queryInfoMapper.deleteQueryInfoByInfoIds(infoIds);
     }
 
+    /**
+     * 导入-并且根据title判重
+     *
+     * @param infoList
+     * @param updateSupport
+     * @param operName
+     * @return
+     */
     @Override
     @Transactional
     public String importQueryInfo(List<QueryInfo> infoList, boolean updateSupport, String operName) {
@@ -114,11 +167,7 @@ public class QueryInfoServiceImpl implements IQueryInfoService {
             }
         }
         StringBuilder resultMsg = new StringBuilder();
-        resultMsg.append("导入结果：成功新增 ")
-                .append(successNum).append(" 条，成功更新 ")
-                .append(updateNum).append(" 条，跳过重复 ")
-                .append(duplicateNum).append(" 条，失败 ")
-                .append(failureNum).append(" 条");
+        resultMsg.append("导入结果：成功新增 ").append(successNum).append(" 条，成功更新 ").append(updateNum).append(" 条，跳过重复 ").append(duplicateNum).append(" 条，失败 ").append(failureNum).append(" 条");
         if (failureNum > 0) {
             resultMsg.append("<br>失败明细：").append(failureMsg);
         }

@@ -18,6 +18,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.util.List;
 
+/**
+ * @Author: weiyiming
+ * @CreateTime: 2025-12-10
+ * @Description: 资料查询
+ */
 @RestController
 @RequestMapping("/dailytools/queryInfo")
 public class QueryInfoController extends BaseController {
@@ -26,7 +31,10 @@ public class QueryInfoController extends BaseController {
     private IQueryInfoService queryInfoService;
 
     /**
-     * 分页查询资料库信息列表
+     * 分页查询列表
+     *
+     * @param queryInfo
+     * @return
      */
     @PreAuthorize("@ss.hasPermi('dailyTools:queryInfo:list')")
     @GetMapping("/list")
@@ -37,7 +45,10 @@ public class QueryInfoController extends BaseController {
     }
 
     /**
-     * 获取资料库信息详细信息
+     * 获取详细信息
+     *
+     * @param infoId
+     * @return
      */
     @PreAuthorize("@ss.hasPermi('dailyTools:queryInfo:query')")
     @GetMapping(value = "/{infoId}")
@@ -46,7 +57,10 @@ public class QueryInfoController extends BaseController {
     }
 
     /**
-     * 新增资料库信息
+     * 新增
+     *
+     * @param queryInfo
+     * @return
      */
     @PreAuthorize("@ss.hasPermi('dailyTools:queryInfo:add')")
     @Log(title = "信息查询", businessType = BusinessType.INSERT)
@@ -57,7 +71,10 @@ public class QueryInfoController extends BaseController {
     }
 
     /**
-     * 修改资料库信息
+     * 修改
+     *
+     * @param queryInfo
+     * @return
      */
     @PreAuthorize("@ss.hasPermi('dailyTools:queryInfo:edit')")
     @Log(title = "信息查询", businessType = BusinessType.UPDATE)
@@ -68,9 +85,12 @@ public class QueryInfoController extends BaseController {
     }
 
     /**
-     * 删除资料库信息
+     * 删除-批量删除
+     *
+     * @param infoIds
+     * @return
      */
-    @PreAuthorize("@ss.hasPermi('dailyTools:queryInfo:remove')")
+    @PreAuthorize("@ss.hasRole('admin') and @ss.hasPermi('dailyTools:queryInfo:remove')")
     @Log(title = "信息查询", businessType = BusinessType.DELETE)
     @DeleteMapping("/{infoIds}")
     public AjaxResult remove(@PathVariable Integer[] infoIds) {
@@ -78,7 +98,10 @@ public class QueryInfoController extends BaseController {
     }
 
     /**
-     * 导出资料库信息
+     * 导出
+     *
+     * @param response
+     * @param queryInfo
      */
     @PreAuthorize("@ss.hasPermi('dailyTools:queryInfo:export')")
     @Log(title = "信息查询", businessType = BusinessType.EXPORT)

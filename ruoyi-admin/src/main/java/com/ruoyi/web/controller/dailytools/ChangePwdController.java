@@ -4,9 +4,12 @@ import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.dto.ChangePwdDTO;
+import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.service.IChangePwdService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,25 +29,47 @@ public class ChangePwdController extends BaseController {
     private IChangePwdService changePwdService;
 
     /**
-     * 修改FIS用户密码
+     * 修改当前用户密码
      *
-     * @author weiyiming
-     * @date 2025-12-07
+     * @param pwdDTO
+     * @return
      */
-    @Log(title = "FisWeb改密", businessType = BusinessType.UPDATE)
-    @PutMapping
-    public AjaxResult changePwd(@Valid @RequestBody ChangePwdDTO pwdDTO) {
+    @PreAuthorize("@ss.hasPermi('dailyTools:changePwd:loginFisNo')")
+    @Log(title = "FisWeb改密-当前用户", businessType = BusinessType.UPDATE)
+    @PutMapping("/current")
+    public AjaxResult changeCurrentPwd(@Valid @RequestBody ChangePwdDTO pwdDTO) {
+        try {
+            // 获取当前登录用户信息
+            LoginUser loginUser = SecurityUtils.getLoginUser();
+            String currentFisNumber = loginUser.getUser().getFisNumber();
+            boolean result = changePwdService.changePwd(
+                    currentFisNumber,
+                    pwdDTO.getFactory(),
+                    pwdDTO.getPassword()
+            );
+            return result ? AjaxResult.success("密码修改成功") : AjaxResult.error("密码修改失败");
+        } catch (Exception e) {
+            return AjaxResult.error("密码修改异常：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 修改其他用户密码
+     *
+     * @param pwdDTO
+     * @return
+     */
+    @PreAuthorize("@ss.hasPermi('dailyTools:changePwd:otherFisNo')")
+    @Log(title = "FisWeb改密-其他用户", businessType = BusinessType.UPDATE)
+    @PutMapping("/other")
+    public AjaxResult changeOtherPwd(@Valid @RequestBody ChangePwdDTO pwdDTO) {
         try {
             boolean result = changePwdService.changePwd(
                     pwdDTO.getFisNumber(),
                     pwdDTO.getFactory(),
                     pwdDTO.getPassword()
             );
-            if (result) {
-                return AjaxResult.success("密码修改成功");
-            } else {
-                return AjaxResult.error("密码修改失败");
-            }
+            return result ? AjaxResult.success("密码修改成功") : AjaxResult.error("密码修改失败");
         } catch (Exception e) {
             return AjaxResult.error("密码修改异常：" + e.getMessage());
         }

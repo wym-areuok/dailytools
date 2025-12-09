@@ -1,18 +1,19 @@
 package com.ruoyi.system.service;
 
-
 import com.ruoyi.system.domain.QueryInfo;
 
 import java.util.List;
 
 /**
- * 资料库信息Service接口
+ * @Author: weiyiming
+ * @CreateTime: 2025-12-10
+ * @Description: 资料查询
  */
 public interface IQueryInfoService {
 
-    QueryInfo selectQueryInfoByInfoId(Integer infoId);
-
     List<QueryInfo> selectQueryInfoList(QueryInfo queryInfo);
+
+    QueryInfo selectQueryInfoByInfoId(Integer infoId);
 
     int insertQueryInfo(QueryInfo queryInfo);
 

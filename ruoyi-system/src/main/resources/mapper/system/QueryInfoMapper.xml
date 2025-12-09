@@ -51,12 +51,12 @@
             <if test="createBy != null and createBy != ''">
                 AND create_by LIKE CONCAT('%', #{createBy}, '%')
             </if>
+            <!-- 精确的逗号分隔标签匹配查询，避免部分匹配问题 -->
             <if test="infoTags != null and infoTags != ''">
-                AND EXISTS (
-                SELECT 1 FROM (
-                SELECT TRIM(value) AS tag FROM STRING_SPLIT(#{infoTags}, ',')
-                ) tags
-                WHERE tag IN (SELECT TRIM(value) FROM STRING_SPLIT(info_tags, ','))
+                AND (
+                <foreach collection="infoTags.split(',')" item="tag" separator=" OR ">
+                    (',' + info_tags + ',') LIKE CONCAT('%,', #{tag}, ',%')
+                </foreach>
                 )
             </if>
         </where>
@@ -94,7 +94,7 @@
         UPDATE string_tool_info
         <set>
             <if test="infoTitle != null and infoTitle != ''">info_title = #{infoTitle},</if>
-            <if test="infoTags != null">info_tags = #{infoTags},</if>
+            <if test="infoTags != null and infoTags != ''">info_tags = #{infoTags},</if>
             <if test="infoType != null and infoType != ''">info_type = #{infoType},</if>
             <if test="infoContent != null">info_content = #{infoContent},</if>
             <if test="status != null and status != ''">status = #{status},</if>

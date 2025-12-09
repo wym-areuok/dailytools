@@ -24,6 +24,14 @@ public class ChangePwdServiceImpl implements IChangePwdService {
 
     private static final Logger logger = LoggerFactory.getLogger(ChangePwdServiceImpl.class);
 
+    /**
+     * 修改当前用户和其他用户密码 使用一个方法
+     *
+     * @param fisNumber
+     * @param factory
+     * @param password
+     * @return
+     */
     @Override
     public boolean changePwd(String fisNumber, String factory, String password) {
         //根据factory的值F6 F3作为label从字典db_info中获取对应的value值 作为DB的信息   从fis_pwd_table字典获取lebel为FISPWDTABLE的value作为tableName
