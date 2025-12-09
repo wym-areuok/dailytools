@@ -1,6 +1,5 @@
 package com.ruoyi.common.core.domain.vo;
 
-
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 

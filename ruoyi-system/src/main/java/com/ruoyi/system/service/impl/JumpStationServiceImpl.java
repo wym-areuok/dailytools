@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class JumpStationServiceImpl implements IJumpStationService {
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
@@ -34,8 +35,8 @@ public class JumpStationServiceImpl implements IJumpStationService {
     /**
      * 获取站点List name-code
      *
-     * @author weiyiming
-     * @date 2025-12-02
+     * @param jumpType
+     * @return
      */
     @Override
     public List<Map<String, Object>> getStationList(String jumpType) {
@@ -54,8 +55,9 @@ public class JumpStationServiceImpl implements IJumpStationService {
     /**
      * 查询SN的信息
      *
-     * @author weiyiming
-     * @date 2025-12-03
+     * @param snList
+     * @param jumpType
+     * @return
      */
     @Override
     public List<SnInfoVO> list(List<String> snList, String jumpType) {
@@ -104,8 +106,11 @@ public class JumpStationServiceImpl implements IJumpStationService {
     /**
      * 执行跳站
      *
-     * @author weiyiming
-     * @date 2025-12-05
+     * @param snList
+     * @param station
+     * @param jumpType
+     * @param remark
+     * @return
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -139,8 +144,13 @@ public class JumpStationServiceImpl implements IJumpStationService {
     /**
      * 在指定数据库中执行跳站操作
      *
-     * @author weiyiming
-     * @date 2025-12-06
+     * @param snInfoList
+     * @param station
+     * @param remark
+     * @param dbIdentifier
+     * @param tableName
+     * @param logTableName
+     * @return
      */
     @Transactional(rollbackFor = Exception.class)
     private String executeJumpInDatabase(List<SnInfoVO> snInfoList, String station, String remark, String dbIdentifier, String tableName, String logTableName) {
@@ -185,8 +195,8 @@ public class JumpStationServiceImpl implements IJumpStationService {
     /**
      * 验证SN列表中所有项目的model字段是否一致，并返回基准model值 防止不同model的SN进行跳站
      *
-     * @author weiyiming
-     * @date 2025-12-04
+     * @param result
+     * @return
      */
     private String validateModelConsistency(List<SnInfoVO> result) {
         // 检查model为空的情况并收集对应的SN
@@ -206,8 +216,9 @@ public class JumpStationServiceImpl implements IJumpStationService {
     /**
      * 根据model获取对应的SFC
      *
-     * @author weiyiming
-     * @date 2025-12-04
+     * @param jumpType
+     * @param modelName
+     * @return
      */
     private String getSfcByModel(String jumpType, String modelName) {
         String sfcTableName = dictDataService.selectDictByTypeAndLabel(jumpType, "SFC");

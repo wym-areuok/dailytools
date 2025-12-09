@@ -31,8 +31,8 @@ public class StringToolController {
     /**
      * 执行字符串处理操作(中小数量级数据)
      *
-     * @author weiyiming
-     * @date 2025-11-21
+     * @param data
+     * @return
      */
     @Log(title = "字符串工具", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:execute')")
@@ -54,8 +54,7 @@ public class StringToolController {
     /**
      * 下载模版文件
      *
-     * @author weiyiming
-     * @date 2025-11-22
+     * @param response
      */
     @Log(title = "字符串工具", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:download')")
@@ -67,8 +66,8 @@ public class StringToolController {
     /**
      * 解析Excel写入数据库
      *
-     * @author weiyiming
-     * @date 2025-11-24
+     * @param file
+     * @return
      */
     @Log(title = "字符串工具", businessType = BusinessType.IMPORT)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:upload')")

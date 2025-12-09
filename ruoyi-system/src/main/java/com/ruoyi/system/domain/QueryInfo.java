@@ -5,6 +5,11 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.core.domain.BaseEntity;
 
+/**
+ * @Author: weiyiming
+ * @CreateTime: 2025-12-10
+ * @Description: 资料查询的实体类
+ */
 public class QueryInfo extends BaseEntity {
     private static final long serialVersionUID = 1L;
 

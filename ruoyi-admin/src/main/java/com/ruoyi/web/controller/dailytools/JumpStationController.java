@@ -29,8 +29,8 @@ public class JumpStationController extends BaseController {
     /**
      * 获取站点List name-code
      *
-     * @author weiyiming
-     * @date 2025-12-02
+     * @param jumpType
+     * @return
      */
     @GetMapping("/getStationList")
     public AjaxResult getStationList(@RequestParam String jumpType) {
@@ -46,8 +46,8 @@ public class JumpStationController extends BaseController {
     /**
      * 查询SN的信息
      *
-     * @author weiyiming
-     * @date 2025-12-02
+     * @param queryDTO
+     * @return
      */
     @PreAuthorize("@ss.hasPermi('dailyTools:jumpStation:query')")
     @PostMapping("/list")
@@ -65,8 +65,8 @@ public class JumpStationController extends BaseController {
     /**
      * 执行跳站
      *
-     * @author weiyiming
-     * @date 2025-11-27
+     * @param jsDTO
+     * @return
      */
     @Log(title = "板卡跳站", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('dailyTools:jumpStation:execute')")

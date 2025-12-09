@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ChangePwdServiceImpl implements IChangePwdService {
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
