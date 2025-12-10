@@ -25,7 +25,71 @@ spring:
                 enabled: false
                 url: 
                 username: 
-                password: 
+                password:
+
+            # 额外数据源配置
+            extra:
+              # iptfis-db-71 数据源配置
+              iptfis_db_71:
+                # 开关：true表示启用，false表示禁用
+                enabled: false
+                url: jdbc:sqlserver://IPTFIS-DB-71:1433;databaseName=master
+                username: root
+                password: root
+                initialSize: 5
+                minIdle: 10
+                maxActive: 20
+                maxWait: 60000
+                connectTimeout: 30000
+                socketTimeout: 60000
+                timeBetweenEvictionRunsMillis: 60000
+                minEvictableIdleTimeMillis: 300000
+                maxEvictableIdleTimeMillis: 900000
+                validationQuery: SELECT 'x'
+                testWhileIdle: true
+                testOnBorrow: false
+                testOnReturn: false
+
+              # iptfis-db-70 数据源配置
+              iptfis_db_70:
+                enabled: false
+                url: jdbc:sqlserver://IPTFIS-DB-70:1433;databaseName=master
+                username: root
+                password: root
+                initialSize: 5
+                minIdle: 10
+                maxActive: 20
+                maxWait: 60000
+                connectTimeout: 30000
+                socketTimeout: 60000
+                timeBetweenEvictionRunsMillis: 60000
+                minEvictableIdleTimeMillis: 300000
+                maxEvictableIdleTimeMillis: 900000
+                validationQuery: SELECT 'x'
+                testWhileIdle: true
+                testOnBorrow: false
+                testOnReturn: false
+
+              # itefis-db-online 数据源配置
+              itefis_db_online:
+                enabled: false
+                url: jdbc:sqlserver://ITEFIS-DB-ONLINE:1433;databaseName=master
+                username: root
+                password: root
+                initialSize: 5
+                minIdle: 10
+                maxActive: 20
+                maxWait: 60000
+                connectTimeout: 30000
+                socketTimeout: 60000
+                timeBetweenEvictionRunsMillis: 60000
+                minEvictableIdleTimeMillis: 300000
+                maxEvictableIdleTimeMillis: 900000
+                validationQuery: SELECT 'x'
+                testWhileIdle: true
+                testOnBorrow: false
+                testOnReturn: false
+
             # 初始连接数
             initialSize: 5
             # 最小连接池数量
