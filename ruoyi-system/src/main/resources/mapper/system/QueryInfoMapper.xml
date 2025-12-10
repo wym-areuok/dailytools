@@ -60,7 +60,7 @@
                 )
             </if>
         </where>
-        ORDER BY info_id DESC
+        ORDER BY search_count DESC, create_time DESC
     </select>
 
     <insert id="insertQueryInfo" parameterType="QueryInfo" useGeneratedKeys="true" keyProperty="infoId"

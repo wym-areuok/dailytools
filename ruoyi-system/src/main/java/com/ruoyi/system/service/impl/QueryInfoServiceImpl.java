@@ -42,7 +42,17 @@ public class QueryInfoServiceImpl implements IQueryInfoService {
      * @return
      */
     @Override
+    @Transactional
     public List<QueryInfo> selectQueryInfoList(QueryInfo queryInfo) {
+        //查询的结果对search_count+1 搜索次数
+        List<QueryInfo> resultList = queryInfoMapper.selectQueryInfoList(queryInfo);
+        // 更新每个查询结果的搜索次数
+        for (QueryInfo info : resultList) {
+            QueryInfo updateInfo = new QueryInfo();
+            updateInfo.setInfoId(info.getInfoId());
+            updateInfo.setSearchCount(info.getSearchCount() + 1);
+            queryInfoMapper.updateQueryInfo(updateInfo);
+        }
         return queryInfoMapper.selectQueryInfoList(queryInfo);
     }
 
