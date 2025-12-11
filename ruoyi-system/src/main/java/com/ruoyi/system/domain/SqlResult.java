@@ -9,21 +9,21 @@ import com.ruoyi.common.core.domain.BaseEntity;
  */
 public class SqlResult extends BaseEntity {
     /**
-     * 数据库名称
+     * 数据源
      */
-    private String dbName;
+    private String dbDataSource;
 
     /**
      * SQL内容
      */
     private String sqlContent;
 
-    public String getDbName() {
-        return dbName;
+    public String getDbDataSource() {
+        return dbDataSource;
     }
 
-    public void setDbName(String dbName) {
-        this.dbName = dbName;
+    public void setDbDataSource(String dbDataSource) {
+        this.dbDataSource = dbDataSource;
     }
 
     public String getSqlContent() {

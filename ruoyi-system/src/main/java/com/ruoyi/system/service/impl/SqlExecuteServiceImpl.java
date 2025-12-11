@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
@@ -41,6 +42,16 @@ public class SqlExecuteServiceImpl implements ISqlExecuteService {
     @Autowired(required = false)
     @Qualifier("itefisDbOnlineDataSource")
     private DataSource itefisDbOnlineDataSource;
+
+    // 读取数据源开关配置
+    @Value("${spring.datasource.druid.extra.iptfis_db_71.enabled}")
+    private boolean iptfisDb71Enabled;
+
+    @Value("${spring.datasource.druid.extra.iptfis_db_70.enabled}")
+    private boolean iptfisDb70Enabled;
+
+    @Value("${spring.datasource.druid.extra.itefis_db_online.enabled}")
+    private boolean itefisDbOnlineEnabled;
 
     /**
      * 执行查询
@@ -192,22 +203,31 @@ public class SqlExecuteServiceImpl implements ISqlExecuteService {
             case "LOCALHOST":
                 return localhostDataSource;
             case "IPTFIS-DB-71":
-                if (iptfisDb71DataSource != null) {
+                if (iptfisDb71DataSource != null && iptfisDb71Enabled) {
                     return iptfisDb71DataSource;
+                }
+                if (!iptfisDb71Enabled) {
+                    throw new RuntimeException("数据源 IPTFIS-DB-71 未启用");
                 }
                 throw new RuntimeException("数据源 IPTFIS-DB-71 未配置");
             case "IPTFIS-DB-70":
-                if (iptfisDb70DataSource != null) {
+                if (iptfisDb70DataSource != null && iptfisDb70Enabled) {
                     return iptfisDb70DataSource;
+                }
+                if (!iptfisDb70Enabled) {
+                    throw new RuntimeException("数据源 IPTFIS-DB-70 未启用");
                 }
                 throw new RuntimeException("数据源 IPTFIS-DB-70 未配置");
             case "ITEFIS-DB-ONLINE":
-                if (itefisDbOnlineDataSource != null) {
+                if (itefisDbOnlineDataSource != null && itefisDbOnlineEnabled) {
                     return itefisDbOnlineDataSource;
+                }
+                if (!itefisDbOnlineEnabled) {
+                    throw new RuntimeException("数据源 ITEFIS-DB-ONLINE 未启用");
                 }
                 throw new RuntimeException("数据源 ITEFIS-DB-ONLINE 未配置");
             default:
-                throw new RuntimeException("未知数据库名称: " + dbName + "，请检查是否已在字典中维护");
+                throw new RuntimeException("未知数据库名称: " + dbName + "，请检查是否维护");
         }
     }
 

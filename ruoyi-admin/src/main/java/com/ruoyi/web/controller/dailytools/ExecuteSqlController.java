@@ -49,7 +49,7 @@ public class ExecuteSqlController extends BaseController {
             }
             // 设置执行超时时间（5秒） 异步执行SQL查询 返回一个Future对象 用于后面获取查询结果
             Future<List<Map<String, Object>>> future = CompletableFuture.supplyAsync(() -> {
-                return sqlExecuteService.executeQuery(request.getDbName(), request.getSqlContent());
+                return sqlExecuteService.executeQuery(request.getDbDataSource(), request.getSqlContent());
             });
             try {
                 List<Map<String, Object>> queryResult = future.get(5, TimeUnit.SECONDS);
@@ -81,7 +81,7 @@ public class ExecuteSqlController extends BaseController {
                 return AjaxResult.error("SQL语句验证失败：" + result.getValue());
             }
             // 设置执行超时时间（5秒）
-            Future<Integer> future = CompletableFuture.supplyAsync(() -> sqlExecuteService.executeUpdate(request.getDbName(), request.getSqlContent()));
+            Future<Integer> future = CompletableFuture.supplyAsync(() -> sqlExecuteService.executeUpdate(request.getDbDataSource(), request.getSqlContent()));
             try {
                 int affectedRows = future.get(5, TimeUnit.SECONDS);
                 return AjaxResult.success("更新成功", affectedRows);
@@ -111,7 +111,7 @@ public class ExecuteSqlController extends BaseController {
                 return AjaxResult.error("SQL语句验证失败：" + result.getValue());
             }
             // 设置执行超时时间（5秒）
-            Future<Integer> future = CompletableFuture.supplyAsync(() -> sqlExecuteService.executeInsert(request.getDbName(), request.getSqlContent()));
+            Future<Integer> future = CompletableFuture.supplyAsync(() -> sqlExecuteService.executeInsert(request.getDbDataSource(), request.getSqlContent()));
             try {
                 int affectedRows = future.get(5, TimeUnit.SECONDS);
                 return AjaxResult.success("插入成功", affectedRows);
@@ -141,7 +141,7 @@ public class ExecuteSqlController extends BaseController {
                 return AjaxResult.error("SQL语句验证失败：" + result.getValue());
             }
             // 设置执行超时时间（5秒）
-            Future<Integer> future = CompletableFuture.supplyAsync(() -> sqlExecuteService.executeDelete(request.getDbName(), request.getSqlContent()));
+            Future<Integer> future = CompletableFuture.supplyAsync(() -> sqlExecuteService.executeDelete(request.getDbDataSource(), request.getSqlContent()));
             try {
                 int affectedRows = future.get(5, TimeUnit.SECONDS);
                 return AjaxResult.success("删除成功", affectedRows);
