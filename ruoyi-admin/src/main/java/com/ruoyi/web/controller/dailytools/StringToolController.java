@@ -34,7 +34,6 @@ public class StringToolController {
      * @param data
      * @return
      */
-    @Log(title = "字符串工具", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:execute')")
     @PostMapping("/execute")
     public AjaxResult execute(@RequestBody Map<String, Object> data) {
@@ -56,8 +55,8 @@ public class StringToolController {
      *
      * @param response
      */
-    @Log(title = "字符串工具", businessType = BusinessType.EXPORT)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:download')")
+    @Log(title = "字符串工具", businessType = BusinessType.EXPORT)
     @PostMapping("/downloadTemplate")
     public void downloadTemplate(HttpServletResponse response) {
         stringToolService.downloadTemplate(response);
@@ -69,8 +68,8 @@ public class StringToolController {
      * @param file
      * @return
      */
-    @Log(title = "字符串工具", businessType = BusinessType.IMPORT)
     @PreAuthorize("@ss.hasPermi('dailyTools:stringTool:upload')")
+    @Log(title = "字符串工具", businessType = BusinessType.IMPORT)
     @PostMapping("/upload")
     public AjaxResult uploadAndProcessExcel(@RequestParam("file") MultipartFile file) {
         try {
