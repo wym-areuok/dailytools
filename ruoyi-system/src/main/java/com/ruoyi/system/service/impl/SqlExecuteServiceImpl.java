@@ -184,8 +184,8 @@ public class SqlExecuteServiceImpl implements ISqlExecuteService {
     /**
      * 根据数据库名称获取对应的数据源
      *
-     * @param dbName 数据库名称
-     * @return 对应的数据源
+     * @param dbName
+     * @return
      */
     private DataSource getDataSourceByDbName(String dbName) {
         switch (dbName) {
@@ -195,23 +195,19 @@ public class SqlExecuteServiceImpl implements ISqlExecuteService {
                 if (iptfisDb71DataSource != null) {
                     return iptfisDb71DataSource;
                 }
-                logger.warn("IPTFIS-DB-71数据源未配置,使用默认数据源");
-                return localhostDataSource;
+                throw new RuntimeException("数据源 IPTFIS-DB-71 未配置");
             case "IPTFIS-DB-70":
                 if (iptfisDb70DataSource != null) {
                     return iptfisDb70DataSource;
                 }
-                logger.warn("IPTFIS-DB-70数据源未配置,使用默认数据源");
-                return localhostDataSource;
+                throw new RuntimeException("数据源 IPTFIS-DB-70 未配置");
             case "ITEFIS-DB-ONLINE":
                 if (itefisDbOnlineDataSource != null) {
                     return itefisDbOnlineDataSource;
                 }
-                logger.warn("ITEFIS-DB-ONLINE数据源未配置,使用默认数据源");
-                return localhostDataSource;
+                throw new RuntimeException("数据源 ITEFIS-DB-ONLINE 未配置");
             default:
-                logger.warn("未知数据库名称: {},使用默认数据源", dbName);
-                return localhostDataSource;
+                throw new RuntimeException("未知数据库名称: " + dbName + "，请检查是否已在字典中维护");
         }
     }
 
