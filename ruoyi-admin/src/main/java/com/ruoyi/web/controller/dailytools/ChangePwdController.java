@@ -44,8 +44,8 @@ public class ChangePwdController extends BaseController {
             String currentFisNumber = loginUser.getUser().getFisNumber();
             boolean result = changePwdService.changePwd(
                     currentFisNumber,
-                    pwdDTO.getFactory(),
-                    pwdDTO.getPassword()
+                    pwdDTO.getPassword(),
+                    pwdDTO.getDbDataSource()
             );
             return result ? AjaxResult.success("密码修改成功") : AjaxResult.error("密码修改失败");
         } catch (Exception e) {
@@ -66,8 +66,8 @@ public class ChangePwdController extends BaseController {
         try {
             boolean result = changePwdService.changePwd(
                     pwdDTO.getFisNumber(),
-                    pwdDTO.getFactory(),
-                    pwdDTO.getPassword()
+                    pwdDTO.getPassword(),
+                    pwdDTO.getDbDataSource()
             );
             return result ? AjaxResult.success("密码修改成功") : AjaxResult.error("密码修改失败");
         } catch (Exception e) {

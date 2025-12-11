@@ -7,5 +7,5 @@ package com.ruoyi.system.service;
  */
 public interface IChangePwdService {
 
-    boolean changePwd(String fisNumber, String factory, String password);
+    boolean changePwd(String fisNumber, String password, String dbDataSource);
 }

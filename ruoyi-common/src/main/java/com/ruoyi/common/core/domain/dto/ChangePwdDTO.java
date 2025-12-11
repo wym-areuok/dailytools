@@ -16,8 +16,8 @@ public class ChangePwdDTO {
     @NotBlank(message = "FIS账号不能为空")
     private String fisNumber;
     /*厂别*/
-    @NotBlank(message = "厂别不能为空")
-    private String factory;
+    @NotBlank(message = "数据源不能为空")
+    private String dbDataSource;
     /*密码*/
     @NotBlank(message = "密码不能为空")
     @Pattern(regexp = "^[a-zA-Z0-9]+$", message = "密码只能由字母和数字组成")
