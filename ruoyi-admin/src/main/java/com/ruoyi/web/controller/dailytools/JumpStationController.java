@@ -54,7 +54,7 @@ public class JumpStationController extends BaseController {
     public TableDataInfo list(@RequestBody JumpStationDTO queryDTO) {
         try {
             startPage();
-            List<SnInfoVO> list = jumpStationService.list(queryDTO.getSnList(), queryDTO.getJumpType());
+            List<SnInfoVO> list = jumpStationService.list(queryDTO.getSnList(), queryDTO.getJumpType(), queryDTO.getDbDataSource());
             return getDataTable(list);
         } catch (Exception e) {
             logger.error("查询SN信息失败: ", e);
@@ -85,7 +85,10 @@ public class JumpStationController extends BaseController {
             if (jsDTO.getRemark() == null || jsDTO.getRemark().isEmpty()) {
                 return AjaxResult.error("备注不能为空");
             }
-            String result = jumpStationService.execute(jsDTO.getSnList(), jsDTO.getStation(), jsDTO.getJumpType(), jsDTO.getRemark());
+            if (jsDTO.getDbDataSource() == null || jsDTO.getDbDataSource().isEmpty()) {
+                return AjaxResult.error("数据源不能为空");
+            }
+            String result = jumpStationService.execute(jsDTO.getSnList(), jsDTO.getStation(), jsDTO.getJumpType(), jsDTO.getRemark(), jsDTO.getDbDataSource());
             return AjaxResult.success("跳站成功", result);
         } catch (Exception e) {
             logger.error("跳站操作失败: ", e);

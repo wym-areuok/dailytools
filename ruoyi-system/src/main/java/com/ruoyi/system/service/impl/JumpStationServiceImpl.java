@@ -1,6 +1,5 @@
 package com.ruoyi.system.service.impl;
 
-import com.ruoyi.common.core.domain.entity.SysDictData;
 import com.ruoyi.common.core.domain.vo.SnInfoVO;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.system.service.IJumpStationService;
@@ -8,12 +7,15 @@ import com.ruoyi.system.service.ISysDictDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,10 +29,73 @@ public class JumpStationServiceImpl implements IJumpStationService {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    // 注入其他数据源（使用required = false 即使不存在也不会报错）
+    @Autowired(required = false)
+    @Qualifier("iptfisDb71DataSource")
+    private DataSource iptfisDb71DataSource;
+
+    @Autowired(required = false)
+    @Qualifier("iptfisDb70DataSource")
+    private DataSource iptfisDb70DataSource;
+
+    @Autowired(required = false)
+    @Qualifier("itefisDbOnlineDataSource")
+    private DataSource itefisDbOnlineDataSource;
+
+    // 读取数据源开关配置
+    @Value("${spring.datasource.druid.extra.iptfis_db_71.enabled}")
+    private boolean iptfisDb71Enabled;
+
+    @Value("${spring.datasource.druid.extra.iptfis_db_70.enabled}")
+    private boolean iptfisDb70Enabled;
+
+    @Value("${spring.datasource.druid.extra.itefis_db_online.enabled}")
+    private boolean itefisDbOnlineEnabled;
+
     @Autowired
     private ISysDictDataService dictDataService;
 
     private static final Logger logger = LoggerFactory.getLogger(JumpStationServiceImpl.class);
+
+    /**
+     * 根据数据库名称获取对应的数据源
+     *
+     * @param dbName
+     * @return
+     */
+    private DataSource getDataSourceByDbName(String dbName) {
+        switch (dbName) {
+            case "LOCALHOST":
+                return jdbcTemplate.getDataSource();
+            case "IPTFIS-DB-71":
+                if (iptfisDb71DataSource != null && iptfisDb71Enabled) {
+                    return iptfisDb71DataSource;
+                }
+                if (!iptfisDb71Enabled) {
+                    throw new RuntimeException("数据源 IPTFIS-DB-71 未启用");
+                }
+                throw new RuntimeException("数据源 IPTFIS-DB-71 未配置");
+            case "IPTFIS-DB-70":
+                if (iptfisDb70DataSource != null && iptfisDb70Enabled) {
+                    return iptfisDb70DataSource;
+                }
+                if (!iptfisDb70Enabled) {
+                    throw new RuntimeException("数据源 IPTFIS-DB-70 未启用");
+                }
+                throw new RuntimeException("数据源 IPTFIS-DB-70 未配置");
+            case "ITEFIS-DB-ONLINE":
+                if (itefisDbOnlineDataSource != null && itefisDbOnlineEnabled) {
+                    return itefisDbOnlineDataSource;
+                }
+                if (!itefisDbOnlineEnabled) {
+                    throw new RuntimeException("数据源 ITEFIS-DB-ONLINE 未启用");
+                }
+                throw new RuntimeException("数据源 ITEFIS-DB-ONLINE 未配置");
+            default:
+                throw new RuntimeException("未知数据库名称: " + dbName + "，请检查是否已在字典中维护");
+        }
+    }
 
     /**
      * 获取站点List name-code
@@ -57,50 +122,53 @@ public class JumpStationServiceImpl implements IJumpStationService {
      *
      * @param snList
      * @param jumpType
+     * @param dbDataSource
      * @return
      */
     @Override
-    public List<SnInfoVO> list(List<String> snList, String jumpType) {
+    public List<SnInfoVO> list(List<String> snList, String jumpType, String dbDataSource) {
         if (snList == null || snList.isEmpty()) {
             throw new ServiceException("SN列表不能为空!");
         }
         if (jumpType == null || jumpType.trim().isEmpty()) {
             throw new ServiceException("跳站类型不能为空!");
         }
-        // 根据字典类型查询数据库名称F6|F3 利用循环先去查一个库的数据 查不到再查另外一个库 字典标签F6 value PTFIS-DB-71 F3 value IPTFIS-DB-70 不排除后续项目扩展到其他的DB
-        List<SysDictData> dbList = dictDataService.selectDictDataByType("db_info");
+        if (dbDataSource == null || dbDataSource.trim().isEmpty()) {
+            throw new ServiceException("数据源不能为空!");
+        }
+        // 根据dbSource获取对应的数据源
+        DataSource dataSource;
+        try {
+            dataSource = getDataSourceByDbName(dbDataSource);
+        } catch (RuntimeException e) {
+            throw new ServiceException(e.getMessage());
+        }
+        JdbcTemplate template = new JdbcTemplate(dataSource);
         String tableName = dictDataService.selectDictByTypeAndLabel(jumpType, "SN");
         if (tableName == null || tableName.isEmpty()) {
             throw new ServiceException("跳站类型SN配置不完整: " + jumpType);
         }
         // 先把snList处理成用于McbSno IN查询的形式
         String mcbSnoList = String.join(",", Collections.nCopies(snList.size(), "?"));
-        for (SysDictData dbInfo : dbList) {
-            String dbIdentifier = dbInfo.getDictValue();
-            StringBuilder snSql = new StringBuilder();
-            // 因为sn表数据比较大,慎用select * 所以虽然使用in 也要加上top
-            // sql.append("SELECT TOP 10000 * FROM [").append(dbIdentifier).append("].").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
-            // TODO 为了测试
-            snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
-            try {
-                List<SnInfoVO> result = jdbcTemplate.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
-                // 如果在当前数据库中查询到数据 则返回结果 不再查询其他数据库
-                if (!result.isEmpty()) {
-                    // 检查model字段是否一致
-                    String modelName = validateModelConsistency(result);
-                    // 根据model获取SFC
-                    String sfc = getSfcByModel(jumpType, modelName);
-                    result.forEach(snInfo -> snInfo.setSfc(sfc));
-                    return result;
-                }
-            } catch (DataAccessException e) {
-                // 记录日志 但不中断流程 继续尝试下一个数据库
-                logger.warn("查询数据库 {} 时发生错误: {}", dbIdentifier, e.getMessage());
+        StringBuilder snSql = new StringBuilder();
+        snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
+        try {
+            List<SnInfoVO> result = template.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
+            // 如果查询到数据，则处理并返回
+            if (!result.isEmpty()) {
+                // 检查model字段是否一致
+                String modelName = validateModelConsistency(result);
+                // 根据model获取SFC
+                String sfc = getSfcByModel(jumpType, modelName);
+                result.forEach(snInfo -> snInfo.setSfc(sfc));
+                return result;
             }
+            return result; // 返回空列表
+        } catch (DataAccessException e) {
+            logger.warn("查询数据库 {} 时发生错误: {}", dbDataSource, e.getMessage());
+            // 发生异常时抛出ServiceException
+            throw new ServiceException("查询数据库 " + dbDataSource + " 时发生错误: " + e.getMessage());
         }
-        // 如果所有数据库都没查到数据 返回空列表
-        logger.info("未找到SN列表中的任何数据: {}", String.join(", ", snList));
-        return new ArrayList<>();
     }
 
     /**
@@ -110,12 +178,23 @@ public class JumpStationServiceImpl implements IJumpStationService {
      * @param station
      * @param jumpType
      * @param remark
+     * @param dbDataSource
      * @return
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String execute(List<String> snList, String station, String jumpType, String remark) {
-        List<SysDictData> dbList = dictDataService.selectDictDataByType("db_info");
+    public String execute(List<String> snList, String station, String jumpType, String remark, String dbDataSource) {
+        if (dbDataSource == null || dbDataSource.trim().isEmpty()) {
+            throw new ServiceException("数据源不能为空!");
+        }
+        // 根据dbSource获取对应的数据源
+        DataSource dataSource;
+        try {
+            dataSource = getDataSourceByDbName(dbDataSource);
+        } catch (RuntimeException e) {
+            throw new ServiceException(e.getMessage());
+        }
+        JdbcTemplate template = new JdbcTemplate(dataSource);
         String tableName = dictDataService.selectDictByTypeAndLabel(jumpType, "SN");
         String logTableName = dictDataService.selectDictByTypeAndLabel(jumpType, "LOG");
         if (tableName == null || tableName.isEmpty()) {
@@ -125,18 +204,16 @@ public class JumpStationServiceImpl implements IJumpStationService {
             throw new ServiceException("跳站类型LOG配置不完整: " + jumpType);
         }
         String mcbSnoList = String.join(",", Collections.nCopies(snList.size(), "?"));
-        for (SysDictData dbInfo : dbList) {
-            String dbIdentifier = dbInfo.getDictValue();
-            StringBuilder snSql = new StringBuilder();
-            snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
-            try {
-                List<SnInfoVO> result = jdbcTemplate.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
-                if (!result.isEmpty()) {
-                    return executeJumpInDatabase(result, station, remark, dbIdentifier, tableName, logTableName);
-                }
-            } catch (DataAccessException e) {
-                logger.warn("查询数据库 {} 时发生错误: {}", dbIdentifier, e.getMessage());
+        StringBuilder snSql = new StringBuilder();
+        snSql.append("SELECT TOP 10000 * FROM ").append(tableName).append(" WHERE McbSno IN (").append(mcbSnoList).append(")");
+        try {
+            List<SnInfoVO> result = template.query(snSql.toString(), snList.toArray(), new BeanPropertyRowMapper<>(SnInfoVO.class));
+            if (!result.isEmpty()) {
+                return executeJumpInDatabase(result, station, remark, dbDataSource, tableName, logTableName, template);
             }
+        } catch (DataAccessException e) {
+            logger.warn("查询数据库 {} 时发生错误: {}", dbDataSource, e.getMessage());
+            throw new ServiceException("查询数据库 " + dbDataSource + " 时发生错误: " + e.getMessage());
         }
         throw new ServiceException("未找到有效的SN信息: " + String.join(", ", snList));
     }
@@ -147,13 +224,14 @@ public class JumpStationServiceImpl implements IJumpStationService {
      * @param snInfoList
      * @param station
      * @param remark
-     * @param dbIdentifier
+     * @param dbDataSource
      * @param tableName
      * @param logTableName
+     * @param jdbcTemplate
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    private String executeJumpInDatabase(List<SnInfoVO> snInfoList, String station, String remark, String dbIdentifier, String tableName, String logTableName) {
+    private String executeJumpInDatabase(List<SnInfoVO> snInfoList, String station, String remark, String dbDataSource, String tableName, String logTableName, JdbcTemplate jdbcTemplate) {
         int successCount = 0;
         List<String> failedSnList = new ArrayList<>();
         List<String> processedSnList = new ArrayList<>();
@@ -176,7 +254,7 @@ public class JumpStationServiceImpl implements IJumpStationService {
                     failedSnList.add(sn);
                 }
             } catch (DataAccessException e) {
-                logger.error("跳站操作失败，SN: " + sn + " 数据库: " + dbIdentifier, e);
+                logger.error("跳站操作失败，SN: " + sn + " 数据库: " + dbDataSource, e);
                 failedSnList.add(sn);
                 // 发生异常时抛出，触发事务回滚
                 throw new ServiceException("跳站操作失败，SN: " + sn + " 错误: " + e.getMessage());

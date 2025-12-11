@@ -14,7 +14,7 @@ public interface IJumpStationService {
 
     List<Map<String, Object>> getStationList(String jumpType);
 
-    List<SnInfoVO> list(List<String> snList, String jumpType);
+    List<SnInfoVO> list(List<String> snList, String jumpType, String dbDataSource);
 
-    String execute(List<String> snList, String station, String jumpType, String remark);
+    String execute(List<String> snList, String station, String jumpType, String remark, String dbDataSource);
 }
